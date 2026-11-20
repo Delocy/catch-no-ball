@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   UPLOAD_MAX_SECONDS, UPLOAD_MAX_BYTES, UPLOAD_GAP_MS, UPLOAD_ACCEPT, UPLOAD_EXTENSIONS,
   checkUpload, checkDuration, downmix, splitIntoClips, prepareUpload, estimateMinutes,
-  minutesLeft, budgetOut, formatCopy, planConfirm, uploadItems, uploadGap, progressText, buttonsFor,
+  minutesLeft, budgetOut, formatCopy, planConfirm, uploadItems, createUploadPacer, progressText, buttonsFor,
+  UPLOAD_MAX_COMPRESSED_BYTES, UPLOAD_PADDING_SECONDS, durationVerdict,
 } from "../src/client/upload.js";
+import { createClipQueue } from "../src/client/queue.js";
 import { CLIP_SECONDS } from "../src/client/clipper.js";
 import { COPY } from "../src/client/copy.js";
 import { wavInfo } from "../src/audio.js";
@@ -42,9 +44,30 @@ test("checkUpload", () => {
   assert.deepEqual(checkUpload({ name: "a.wav", type: "audio/wav", size: 41943040 }), { ok: true });
 });
 
+test("compressed files have a much smaller byte cap; type is checked before size", () => {
+  assert.equal(UPLOAD_MAX_COMPRESSED_BYTES, 6291456);
+  assert.deepEqual(checkUpload({ name: "a.m4a", type: "audio/x-m4a", size: 6291456 }), { ok: true });
+  assert.deepEqual(checkUpload({ name: "a.m4a", type: "audio/x-m4a", size: 6291457 }), {
+    ok: false, reason: "too_big", copy: COPY.uploadTooLong,
+  });
+  assert.equal(checkUpload({ name: "a.mp3", type: "", size: 7e6 }).reason, "too_big");
+  assert.equal(checkUpload({ name: "a.wav", type: "audio/x-wav", size: 30e6 }).ok, true);
+  assert.equal(checkUpload({ name: "a.bin", type: "audio/mpeg", size: 7e6 }).reason, "too_big");
+  assert.equal(checkUpload({ name: "big.pdf", type: "application/pdf", size: 50e6 }).reason, "not_audio");
+});
+
+test("durationVerdict: metadata probe before decoding", () => {
+  assert.deepEqual(durationVerdict(3600), { ok: false, reason: "too_long", copy: COPY.uploadTooLong });
+  assert.deepEqual(durationVerdict(120.4), { ok: true });
+  for (const d of [NaN, Infinity, 0, -1, undefined]) assert.deepEqual(durationVerdict(d), { ok: true }); // unknown: decode instead
+});
+
 test("checkDuration", () => {
+  assert.equal(UPLOAD_PADDING_SECONDS, 0.5);
   assert.deepEqual(checkDuration(120), { ok: true });
-  assert.deepEqual(checkDuration(120.01), { ok: false, reason: "too_long", copy: COPY.uploadTooLong });
+  assert.deepEqual(checkDuration(120.49), { ok: true }); // decoder padding allowed; tail < 0.5 s is never sent
+  assert.deepEqual(checkDuration(120.5), { ok: false, reason: "too_long", copy: COPY.uploadTooLong });
+  assert.deepEqual(checkDuration(121), { ok: false, reason: "too_long", copy: COPY.uploadTooLong });
 });
 
 test("a 121 s file is refused", () => {
@@ -107,6 +130,18 @@ test("silent clips are skipped", () => {
   assert.equal(prepareUpload({ channels: [sine(30.3, 16000)], sampleRate: 16000 }).wavs.length, 2);
 });
 
+test("a silent tail is dropped; 120 s at 44.1 and 48 kHz gives exactly 8 clips", () => {
+  const s = sine(40, 16000);
+  s.fill(0, 30 * 16000);
+  const r = prepareUpload({ channels: [s], sampleRate: 16000 });
+  assert.equal(r.wavs.length, 2);
+  assert.equal(r.seconds, 30);
+  for (const rate of [44100, 48000]) {
+    assert.equal(prepareUpload({ channels: [sine(120, rate)], sampleRate: rate }).wavs.length, 8);
+  }
+  assert.equal(prepareUpload({ channels: [sine(120.4, 16000)], sampleRate: 16000 }).wavs.length, 8);
+});
+
 test("estimateMinutes rounds up", () => {
   const e = [[0, 0], [1, 1], [40, 1], [60, 1], [60.5, 2], [120, 2]];
   for (const [s, m] of e) assert.equal(estimateMinutes(s), m);
@@ -147,15 +182,82 @@ test("uploadItems", () => {
   assert.deepEqual(items[0].wav, Uint8Array.of(1));
 });
 
-test("uploadGap", () => {
-  const a = { kind: "clip", uploadId: "u1" };
-  const b = { kind: "clip", uploadId: "u1" };
-  assert.equal(uploadGap(b, a, { cached: false }), 13000);
-  assert.equal(uploadGap(b, a, { cached: true }), 0);
-  assert.equal(uploadGap(b, a, undefined), 13000);
-  assert.equal(uploadGap({ kind: "text", text: "x" }, a, {}), 0);
-  assert.equal(uploadGap(b, { kind: "clip" }, {}), 0);
-  assert.equal(uploadGap({ kind: "clip", uploadId: "u2" }, a, {}), 0);
+test("pacer: 13 s after the last clip sent, whatever was sent in between", () => {
+  let t = 1000;
+  const p = createUploadPacer(() => t);
+  const c = (n, u = "u1") => ({ kind: "clip", uploadId: u, index: n });
+  assert.equal(p.gap(c(1)), 0); // nothing sent yet
+  p.sent(c(1));
+  assert.equal(p.gap(c(2)), 13000);
+  t += 5000;
+  assert.equal(p.gap(c(2)), 8000);
+  p.sent({ kind: "text", text: "hi" }); // a typed line does not reset or cancel the gap
+  assert.equal(p.gap({ kind: "text", text: "x" }), 0);
+  assert.equal(p.gap(c(2)), 8000);
+  t += 9000;
+  assert.equal(p.gap(c(2)), 0);
+  assert.equal(p.gap(c(1, "u2")), 0); // another upload
+  assert.equal(p.gap({ kind: "clip", index: 1 }), 0); // a Listen clip
+  p.sent(c(2));
+  p.done(c(2), { cached: true });
+  assert.equal(p.gap(c(3)), 0);
+  p.sent(c(3));
+  p.done(c(3), undefined); // errored: counts as a request
+  assert.equal(p.gap(c(4)), 13000);
+});
+
+// The real order app.js produces: all clips pushed at Send, typed lines pushed later.
+function harness() {
+  let t = 0;
+  const pacer = createUploadPacer(() => t);
+  const log = [];
+  let q;
+  const hooks = { afterResult: () => {} };
+  q = createClipQueue({
+    send: async (item) => { pacer.sent(item); log.push({ id: item.id, at: t }); return { cached: false }; },
+    onResult: (item, result, error) => { pacer.done(item, result, error); hooks.afterResult(item); },
+    gapMs: (next) => pacer.gap(next),
+    sleep: async (ms) => { t += ms; },
+  });
+  return { q, log, hooks, advance: (ms) => { t += ms; } };
+}
+const clips8 = () => Array.from({ length: 8 }, (_, i) => ({ id: "c" + (i + 1), kind: "clip", uploadId: "u1", index: i + 1, total: 8 }));
+
+test("an 8-clip upload with a typed line in the middle: the line goes ahead, clips stay 13 s apart", async () => {
+  const { q, log, hooks } = harness();
+  hooks.afterResult = (item) => { if (item.id === "c3") q.push({ id: "t1", kind: "text" }); };
+  clips8().forEach((c) => q.push(c));
+  await q.idle();
+  assert.deepEqual(log.map((l) => l.id), ["c1", "c2", "c3", "t1", "c4", "c5", "c6", "c7", "c8"]);
+  const clipTimes = log.filter((l) => l.id !== "t1").map((l) => l.at);
+  for (let i = 1; i < clipTimes.length; i++) assert.ok(clipTimes[i] - clipTimes[i - 1] >= 13000, `gap ${i}`);
+  assert.equal(log[3].at, log[2].at); // no wait before the typed line
+});
+
+test("a typed line pushed during the gap is sent at once, ahead of the waiting clips", async () => {
+  let t = 0;
+  const pacer = createUploadPacer(() => t);
+  const log = [];
+  let release;
+  const q = createClipQueue({
+    send: async (item) => { pacer.sent(item); log.push({ id: item.id, at: t }); return { cached: false }; },
+    onResult: () => {},
+    gapMs: (next) => pacer.gap(next),
+    sleep: (ms) => new Promise((r) => { release = () => { t += ms; r(); }; }),
+  });
+  clips8().slice(0, 3).forEach((c) => q.push(c));
+  await new Promise((r) => setImmediate(r)); // c1 sent, now sleeping
+  q.push({ id: "t1", kind: "text" });
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(log.map((l) => l.id), ["c1", "t1"]); // typed line did not wait out the gap
+  t += 4000;
+  await new Promise((r) => setImmediate(r));
+  release(); // the gap for c2 is now 13000 - 4000 and still runs
+  await new Promise((r) => setImmediate(r));
+  release?.();
+  await q.idle();
+  assert.deepEqual(log.map((l) => l.id), ["c1", "t1", "c2", "c3"]);
+  assert.ok(log[2].at - log[0].at >= 13000);
 });
 
 test("progressText", () => assert.equal(progressText(2, 3), "Sending clip 2 of 3"));

@@ -229,3 +229,49 @@ test("a typed line pushed during an upload is sent in push order with no gap aro
   assert.deepEqual(sent, ["c1", "t", "c2"]);
   assert.deepEqual(gaps, []);
 });
+
+test("a text item jumps ahead of waiting upload clips but not the one in flight; typed lines keep their order", async () => {
+  const sent = [];
+  let release;
+  const q = createClipQueue({
+    send: (item) => { sent.push(item.id); return new Promise((r) => { release = () => r({}); }); },
+    onResult: () => {},
+  });
+  q.push({ id: "c1", kind: "clip", uploadId: "u" });
+  q.push({ id: "c2", kind: "clip", uploadId: "u" });
+  q.push({ id: "t1", kind: "text" });
+  q.push({ id: "t2", kind: "text" });
+  q.push({ id: "L", kind: "clip" }); // a Listen clip keeps push order
+  await Promise.resolve();
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release();
+  await q.idle();
+  assert.deepEqual(sent, ["c1", "t1", "t2", "c2", "L"]);
+});
+
+test("drop wakes a pending gap so the loop moves on at once", async () => {
+  const sent = [];
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: (next) => (next.uploadId ? 13000 : 0),
+    sleep: () => new Promise(() => {}), // never resolves on its own
+  });
+  q.push({ id: "A", uploadId: "u1" }); q.push({ id: "B", uploadId: "u1" });
+  await new Promise((r) => setImmediate(r));
+  q.drop((i) => i.uploadId === "u1");
+  q.push({ id: "T", kind: "text" });
+  await q.idle();
+  assert.deepEqual(sent, ["A", "T"]);
+});
+
+test("the default sleep waits with setTimeout", async () => {
+  const q = createClipQueue({ send: async (i) => i, onResult: () => {}, gapMs: () => 5 });
+  const t0 = Date.now();
+  q.push({ a: 1 }); q.push({ a: 2 });
+  await q.idle();
+  assert.ok(Date.now() - t0 >= 4);
+});
