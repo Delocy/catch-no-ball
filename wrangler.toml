@@ -1,0 +1,20 @@
+name = "catch-no-ball"
+main = "src/index.js"
+compatibility_date = "2025-08-01"
+
+# Serve the app page, its CSS and the client JS from plain files, imported as strings.
+# No .svg: the logo is a static asset in public/.
+[[rules]]
+type = "Text"
+globs = ["src/**/*.html", "src/**/*.css", "src/client/**/*.js"]
+fallthrough = false
+
+# public/ (landing page, logos) is served as static assets before the Worker runs.
+# These paths always go to the Worker, even if a file of the same name appears in public/.
+[assets]
+directory = "./public"
+run_worker_first = ["/app", "/api/*", "/client/*"]
+
+# Secrets (OPENCODE_API_KEY, MERALION_API_KEY) are set with
+# `wrangler secret put` for deploys and `.dev.vars` for local development.
+# Never put them in this file.
