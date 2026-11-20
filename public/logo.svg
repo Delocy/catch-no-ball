@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 240" role="img" aria-label="Catch No Ball">
+  <title>Catch No Ball</title>
+  <g transform="translate(6 6) scale(1)">
+    <!-- offset shadow -->
+    <path d="M46 40 H182 Q200 40 200 58 V138 Q200 156 182 156 H112 L70 196 L74 156 H46 Q28 156 28 138 V58 Q28 40 46 40 Z" fill="#1f1b2e" transform="translate(8 8)"/>
+    <path d="M46 40 H182 Q200 40 200 58 V138 Q200 156 182 156 H112 L70 196 L74 156 H46 Q28 156 28 138 V58 Q28 40 46 40 Z" fill="#19b5a5" stroke="#1f1b2e" stroke-width="6" stroke-linejoin="round"/>
+    <g stroke="#1f1b2e" stroke-width="6" stroke-linecap="round" fill="none">
+      <path d="M48 76 H66"/><path d="M44 98 H64"/><path d="M48 120 H66"/>
+    </g>
+    <circle cx="122" cy="98" r="42" fill="#ef3340" stroke="#1f1b2e" stroke-width="6"/>
+    <g stroke="#fff6e0" stroke-width="5" stroke-linecap="round" fill="none">
+      <path d="M92 70 Q108 98 92 126"/><path d="M152 70 Q136 98 152 126"/>
+    </g>
+    <g stroke="#fff6e0" stroke-width="4" stroke-linecap="round">
+      <path d="M97 80 L107 84"/><path d="M101 98 L112 98"/><path d="M97 116 L107 112"/>
+      <path d="M147 80 L137 84"/><path d="M143 98 L132 98"/><path d="M147 116 L137 112"/>
+    </g>
+    <path d="M112 66 Q122 62 130 66" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".85"/>
+    <g transform="translate(180 34)">
+      <path d="M0 -20 L5 -6 L20 0 L5 6 L0 20 L-5 6 L-20 0 L-5 -6 Z" fill="#ffcf33" stroke="#1f1b2e" stroke-width="5" stroke-linejoin="round"/>
+    </g>
+    <circle cx="32" cy="34" r="8" fill="#ff8fb1" stroke="#1f1b2e" stroke-width="4"/>
+  </g>
+
+  <!-- wordmark: shadow layer then fill layer -->
+  <g font-family="'Trebuchet MS','Segoe UI',system-ui,sans-serif" font-weight="900" letter-spacing="-2">
+    <g fill="#ffcf33" stroke="#1f1b2e" stroke-width="10" stroke-linejoin="round" paint-order="stroke">
+      <text x="248" y="100" font-size="76">Catch No</text>
+      <text x="248" y="176" font-size="76">Ball</text>
+    </g>
+    <text x="248" y="100" font-size="76" fill="#ffcf33" stroke="#1f1b2e" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke">Catch <tspan fill="#ef3340">No</tspan></text>
+    <text x="248" y="176" font-size="76" fill="#ffcf33" stroke="#1f1b2e" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke">Ball<tspan fill="#19b5a5">!</tspan></text>
+  </g>
+  <!-- tagline sticker -->
+  <g transform="translate(466 150) rotate(-4)">
+    <rect x="0" y="0" width="200" height="34" rx="17" fill="#fff" stroke="#1f1b2e" stroke-width="4"/>
+    <text x="100" y="23" text-anchor="middle" font-family="'Trebuchet MS','Segoe UI',sans-serif" font-weight="800" font-size="16" fill="#1f1b2e">catch the tone, lah</text>
+  </g>
+</svg>
