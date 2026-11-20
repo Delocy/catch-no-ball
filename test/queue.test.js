@@ -76,3 +76,39 @@ test("an onResult that throws is logged", async (t) => {
   assert.equal(logged.length, 1);
   assert.match(logged[0], /ui bug/);
 });
+
+import { withContext } from "../src/client/session.js";
+
+test("a clip pushed while a text item is in flight waits its turn (mixed kinds keep push order)", async () => {
+  const sent = [];
+  let release;
+  const q = createClipQueue({
+    send: (item) => {
+      sent.push(item.kind);
+      if (item.kind === "text") return new Promise((r) => { release = () => r({ status: "ok" }); });
+      return Promise.resolve({ status: "ok" });
+    },
+    onResult: () => {},
+  });
+  q.push({ kind: "text", text: "a" });
+  q.push({ kind: "clip", wav: new Uint8Array(4) });
+  await Promise.resolve();
+  assert.deepEqual(sent, ["text"]);
+  release();
+  await q.idle();
+  assert.deepEqual(sent, ["text", "clip"]);
+});
+
+test("a retried item reaches send with its original context, not a later one (M6)", async () => {
+  const seen = [];
+  const q = createClipQueue({ send: async (item) => { seen.push([item.name, item.context]); return {}; }, onResult: () => {} });
+  let context = ["x"];
+  const A = withContext({ kind: "text", name: "A", text: "a" }, context);
+  q.push(A);
+  context = ["x", "a"];
+  q.push(withContext({ kind: "text", name: "B", text: "b" }, context));
+  context = ["x", "a", "b"];
+  q.push(A); // the tap on retry re-pushes the original item
+  await q.idle();
+  assert.deepEqual(seen, [["A", ["x"]], ["B", ["x", "a"]], ["A", ["x"]]]);
+});

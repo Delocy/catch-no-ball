@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { escapeHtml, markTerms, toCardModels, cardHtml, shouldAutoScroll, renderResult } from "../src/client/cards.js";
 import { sentence } from "./helpers/replies.js";
 
-const result = (over) => ({ status: "ok", source: "text", transcript: "t", sentences: [], passes: 1, cached: false, hint: null, ...over });
+const result = (over) => ({ status: "ok", source: "text", transcript: "t", sentences: [], passes: 1, cached: false, ...over });
 
 test("escapeHtml escapes & < > \" '", () => {
   assert.equal(escapeHtml(`& < > " '`), "&amp; &lt; &gt; &quot; &#39;");
@@ -174,4 +174,45 @@ test("unsure card escapes reading text", () => {
 test("a confident sentence never renders \"Could mean\"", () => {
   const html = cardHtml(toCardModels(result({ sentences: [sentence()] }))[0], "c1");
   assert.ok(!html.includes("Could mean"));
+});
+
+import { fixItem } from "../src/client/cards.js";
+
+test("an uncaught result becomes one uncaught card", () => {
+  assert.deepEqual(toCardModels(result({ status: "uncaught", source: "meralion" })), [{ kind: "uncaught" }]);
+});
+
+test("uncaught renders \"Couldn't catch that\" and a text input", () => {
+  const html = cardHtml({ kind: "uncaught" }, "card-4");
+  assert.match(html, /class="card uncaught" id="card-4"/);
+  assert.match(html, /Couldn&#39;t catch that/);
+  assert.match(html, /<form class="fix" data-card-id="card-4"/);
+  assert.match(html, /<input [^>]*type="text"[^>]*name="text"/);
+  assert.match(html, /maxlength="1000"/);
+});
+
+test("renderResult: uncaught is not retryable and replaces the pending card", () => {
+  const out = renderResult({ cardId: "c7", kind: "clip" }, result({ status: "uncaught" }));
+  assert.match(out.html, /class="card uncaught" id="c7"/);
+  assert.equal(out.retryable, false);
+});
+
+test("fixItem turns a typed fix into a text item that replaces the uncaught card", () => {
+  assert.deepEqual(fixItem("card-4", "  can lor  "), { kind: "text", text: "can lor", replaces: "card-4" });
+  assert.equal(fixItem("card-4", "   "), null);
+  assert.equal(fixItem("card-4", undefined), null);
+});
+
+test("renderResult: an API error on a clip is a retryable unavailable card with no words", () => {
+  const out = renderResult({ cardId: "c8", kind: "clip" }, undefined, new Error("network"));
+  assert.match(out.html, /class="card unavailable" id="c8"/);
+  assert.match(out.html, /Meaning unavailable, tap to retry/);
+  assert.doesNotMatch(out.html, /undefined/);
+  assert.equal(out.retryable, true);
+});
+
+test("a clip's pending card shows only the Translating label", () => {
+  const html = cardHtml({ kind: "pending", text: "" }, "p2");
+  assert.match(html, /Translating/);
+  assert.doesNotMatch(html, /class="said"/);
 });

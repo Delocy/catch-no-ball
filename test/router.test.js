@@ -98,3 +98,35 @@ test("a throwing handler is logged (message only) before the 500", async (t) => 
   assert.match(logged[0], /boom detail/);
   assert.doesNotMatch(logged[0], /s3cr3t/);
 });
+
+function routerWith(extra) {
+  const calls = [];
+  const h = (name) => async (req, env) => { calls.push({ name, req, env }); return Response.json({ from: name }); };
+  return { calls, router: createRouter({ app: "", client: {} }, { handleText: h("text"), handleChunk: h("chunk"), handleBudget: h("budget"), ...extra }) };
+}
+
+test("POST /api/chunk calls the chunk handler", async () => {
+  const { router, calls } = routerWith();
+  const res = await router.fetch(new Request("http://x/api/chunk", { method: "POST", body: "x" }), { E: 2 }, {});
+  assert.deepEqual(await res.json(), { from: "chunk" });
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.equal(calls[0].name, "chunk");
+  assert.deepEqual(calls[0].env, { E: 2 });
+});
+
+test("GET /api/budget returns the handler's JSON", async () => {
+  const { router } = routerWith();
+  const res = await router.fetch(new Request("http://x/api/budget"), {}, {});
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { from: "budget" });
+  assert.equal((await router.fetch(new Request("http://x/api/budget", { method: "POST" }), {}, {})).status, 404);
+  assert.equal((await router.fetch(new Request("http://x/api/chunk"), {}, {})).status, 404);
+});
+
+test("neither route asks for a code or key", async () => {
+  const { router } = routerWith();
+  for (const [path, method] of [["/api/chunk", "POST"], ["/api/budget", "GET"]]) {
+    const res = await router.fetch(new Request("http://x" + path, { method, body: method === "POST" ? "x" : undefined }), {}, {});
+    assert.equal(res.status, 200, path);
+  }
+});

@@ -64,7 +64,6 @@ test("interpret throwing gives meaning_unavailable with the transcript and no se
     sentences: [],
     passes: 1,
     cached: false,
-    hint: null,
   });
 });
 
@@ -107,11 +106,11 @@ test("context is limited to the last 3 entries of at most 1000 characters", asyn
   assert.equal(calls[0].args.context[0], "c");
 });
 
-test("the result carries hint: null (ChunkResult contract), also for meaning_unavailable", async () => {
+test("the result has no hint field (revision 5: transcript-only), also for meaning_unavailable", async () => {
   const ok = await (await handleText(post({ text: "hi" }), {}, deps().deps)).json();
-  assert.equal(ok.hint, null);
+  assert.ok(!("hint" in ok));
   const bad = await (await handleText(post({ text: "hi" }), {}, deps(() => { throw new Error("x"); }).deps)).json();
-  assert.equal(bad.hint, null);
+  assert.ok(!("hint" in bad));
 });
 
 test("a sessionId that is not header-safe gets a UUID instead", async () => {

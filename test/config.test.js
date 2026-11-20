@@ -85,3 +85,55 @@ test(".dev.vars.example lists both secret names with empty values", () => {
   assert.match(ex, /^OPENCODE_API_KEY=$/m);
   assert.match(ex, /^MERALION_API_KEY=$/m);
 });
+
+const strip = (s) => s.replace(/^\s*#.*$/gm, "");
+
+test("wrangler.toml binds MERALION_GUARD with a v1 new_sqlite_classes migration, and index.js exports MeralionGuard", () => {
+  const toml = strip(read("wrangler.toml"));
+  assert.match(toml, /\[\[durable_objects\.bindings\]\]\s*\nname = "MERALION_GUARD"\s*\nclass_name = "MeralionGuard"/);
+  assert.match(toml, /\[\[migrations\]\]\s*\ntag = "v1"\s*\nnew_sqlite_classes = \["MeralionGuard"\]/);
+  assert.match(read("src/index.js"), /export\s*\{\s*MeralionGuard\s*\}\s*from\s*"\.\/guard\.js"/);
+});
+
+test("wrangler.toml binds the CACHE KV namespace", () => {
+  assert.match(strip(read("wrangler.toml")), /\[\[kv_namespaces\]\]\s*\nbinding = "CACHE"\s*\nid = "[^"]+"/);
+});
+
+test("wrangler.toml has no [ai] binding yet", () => {
+  assert.doesNotMatch(strip(read("wrangler.toml")), /^\[ai\]/m);
+});
+
+test("src/index.js wires handleChunk and handleBudget", () => {
+  const index = read("src/index.js");
+  assert.match(index, /handleChunk/);
+  assert.match(index, /handleBudget/);
+});
+
+test("no FORCE_WHISPER anywhere in wrangler.toml or .dev.vars.example", () => {
+  for (const f of ["wrangler.toml", ".dev.vars.example"]) assert.doesNotMatch(read(f), /FORCE_WHISPER/, f);
+});
+
+function srcFiles(dir = "src/") {
+  let out = [];
+  for (const e of readdirSync(new URL(dir, root), { withFileTypes: true })) {
+    if (e.isDirectory()) out = out.concat(srcFiles(`${dir}${e.name}/`));
+    else out.push(`${dir}${e.name}`);
+  }
+  return out;
+}
+
+test("no ACCESS_CODE or DEMO_KEY anywhere in src/, wrangler.toml or .dev.vars.example, and .dev.vars.example lists exactly OPENCODE_API_KEY and MERALION_API_KEY", () => {
+  for (const f of [...srcFiles(), "wrangler.toml", ".dev.vars.example"]) {
+    assert.doesNotMatch(read(f), /ACCESS_CODE|DEMO_KEY/, f);
+  }
+  const names = read(".dev.vars.example").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).map((l) => l.split("=")[0]);
+  assert.deepEqual(names.sort(), ["MERALION_API_KEY", "OPENCODE_API_KEY"]);
+});
+
+test("no file in src/ mentions a MERaLiON hint or a combined/two_call mode", () => {
+  for (const f of srcFiles()) {
+    const text = read(f);
+    assert.doesNotMatch(text, /\bhint\b/i, f);
+    assert.doesNotMatch(text, /two_call|["']combined["']/, f);
+  }
+});
