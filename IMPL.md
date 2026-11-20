@@ -1,10 +1,10 @@
 # Catch No Ball: implementation plan
 
-**Status:** revision 5, 2026-11-20. Slices 1 and 2 are built (slice 1 is merged to `main`; slice 2 is PR #3, open). Slices 3–8 are still to build.
-**Source of truth:** [PRD.md](PRD.md) (the PM is revising it to the transcript-only design; where it still says "option B" or a MERaLiON "reading", this plan and `decisions.md` win) (user stories US-1…US-15 (US-2 and US-12 are marked Removed there; the numbers are kept), requirements A/L/B, metrics M1–M5, tests E1/E2, risks R1–R11). Binding user decisions (including: A works on one branch per slice, merged to `main` by PR after feedback): `.superpowers/main-flow/decisions.md`.
+**Status:** revision 6, 2026-11-20. Slices 1 and 2 are built (slice 1 is merged to `main`; slice 2 is PR #3, open). Slice 3 is PR #4 (open). Slices 3b and 4–8 are still to build.
+**Source of truth:** [PRD.md](PRD.md) (the PM is revising it to the transcript-only design; where it still says "option B" or a MERaLiON "reading", this plan and `decisions.md` win) (user stories US-1…US-16 (US-16 Upload is Should, slice 3b; US-2 and US-12 are marked Removed there; the numbers are kept), requirements A/L/B, metrics M1–M5, tests E1/E2, risks R1–R11). Binding user decisions (including: A works on one branch per slice, merged to `main` by PR after feedback): `.superpowers/main-flow/decisions.md`.
 **Replaces:** `docs/superpowers/plans/2026-11-20-catch-no-ball-v1.md` (a horizontal, task-by-task plan for a larger scope). Its interfaces and test ideas are reused here, re-cut into vertical slices. The old file was removed when this plan was approved.
 **Deadline:** 1 week. Slices 1–7 are Must. Slice 8 is Should and optional.
-**Revisions:** 1: MERaLiON is the main model from the first spoken card; Whisper is only the automatic fallback. 2: option B (MERaLiON hears transcript + meaning + tone of voice; OpenCode Go checks it and writes the card) and a 3-person team split. 3: the team split is by folder ownership, so A, B and C can code at the same time without touching each other's files; `public/` is served as Cloudflare Workers static assets (Person C's); the slice 6 eval code moves to Person B. 4: no access code and no demo key (decisions.md, update 2026-11-20): the only secrets are `OPENCODE_API_KEY` and `MERALION_API_KEY`; the guard uses the whole free tier; the old demo-key slice is gone and the later slices are renumbered (old 7, 8, 9 are now 6, 7, 8). 5: transcript-only MERaLiON (decisions.md, "MERaLiON transcript-only"): slice 3's step 0 is done and is replaced by a results box; all option B machinery is removed (the `hint` object and contract, the `combined` and `two_call` modes, the 25 s clip, the hint tests, the MERaLiON-tone-vs-final-card eval); the MERaLiON request is the real JSON `audio_url` + `X-API-Key` shape; slices 1–2 are marked built and the deferred slice-2 minors M5 and M6 are folded into slice 3; deploy is deferred, so everything runs locally.
+**Revisions:** 1: MERaLiON is the main model from the first spoken card; Whisper is only the automatic fallback. 2: option B (MERaLiON hears transcript + meaning + tone of voice; OpenCode Go checks it and writes the card) and a 3-person team split. 3: the team split is by folder ownership, so A, B and C can code at the same time without touching each other's files; `public/` is served as Cloudflare Workers static assets (Person C's); the slice 6 eval code moves to Person B. 4: no access code and no demo key (decisions.md, update 2026-11-20): the only secrets are `OPENCODE_API_KEY` and `MERALION_API_KEY`; the guard uses the whole free tier; the old demo-key slice is gone and the later slices are renumbered (old 7, 8, 9 are now 6, 7, 8). 5: transcript-only MERaLiON (decisions.md, "MERaLiON transcript-only"): slice 3's step 0 is done and is replaced by a results box; all option B machinery is removed (the `hint` object and contract, the `combined` and `two_call` modes, the 25 s clip, the hint tests, the MERaLiON-tone-vs-final-card eval); the MERaLiON request is the real JSON `audio_url` + `X-API-Key` shape; slices 1–2 are marked built and the deferred slice-2 minors M5 and M6 are folded into slice 3; deploy is deferred, so everything runs locally. 6: new Should slice **3b, Upload an audio file (US-16)** after slice 3 (decisions.md, "audio file upload, slice after 3"): client-only, reuses slice 3's resampler, WAV encoder, clip size, silence rule, queue and `/api/chunk`; 2-minute cap, a `/api/budget` confirm, and 13 s pacing between upload clips; COPY, constants, layout, overview and planned spend updated. Other slices keep their numbers.
 
 Labels: **(my call)** marks an engineering decision this plan makes that the PRD leaves open. Each one can be overruled.
 
@@ -23,7 +23,7 @@ Three people code at the same time. Each person owns folders and files outright,
 
 | Person | Owns (folders/files) | Work | Hands in |
 |---|---|---|---|
-| **A: the user, with Claude** | `src/`, `test/`, `package.json`, `package-lock.json`, `wrangler.toml`, `.dev.vars.example`, `CLAUDE.md`, plus the other shared root files (`.gitignore`, `README.md`). | App pipeline slices 1, 2, 3, 4, 7, and the Worker/route half of slices 5 and 8 (deploy is deferred until the user asks). Integrates and reviews B's eval PR in slice 6. Merges B's and C's PRs. Holds both API keys and the Cloudflare login. | Each slice is built on its own branch `a/slice-<n>-<name>` (for example `a/slice-1-type-to-card`); after the user's feedback it is merged into `main` through a PR and pushed. Docs-only changes may go to `main` directly. |
+| **A: the user, with Claude** | `src/`, `test/`, `package.json`, `package-lock.json`, `wrangler.toml`, `.dev.vars.example`, `CLAUDE.md`, plus the other shared root files (`.gitignore`, `README.md`). | App pipeline slices 1, 2, 3, 3b, 4, 7, and the Worker/route half of slices 5 and 8 (deploy is deferred until the user asks). Integrates and reviews B's eval PR in slice 6. Merges B's and C's PRs. Holds both API keys and the Cloudflare login. | Each slice is built on its own branch `a/slice-<n>-<name>` (for example `a/slice-1-type-to-card`); after the user's feedback it is merged into `main` through a PR and pushed. Docs-only changes may go to `main` directly. |
 | **B** | `evals/` (all of it: `score.js`, `runner.js`, `cards-page.js`, `run.js`, their tests `evals/*.test.js`, `evals/fixtures/`, `references.example.json`, `references.json`, `README.md`, `RESULTS.md`), `reports/r1-*.md`, `reports/r2-*.md`. Clips live in `evals/clips/` on B's machine only (gitignored). | Day-1 checks **R1** (particle test) and **R2** (phone-in-meeting test); recording the **15 eval clips** and writing **`evals/references.json`**; **the slice 6 eval scripts and their tests**, built against the fixed contracts below with fixture JSON, so they need no running app until the final run; running the real eval and **E1**. | R1/R2 by day 2 (R2 before slice 3's demo); eval code PR by day 4; clips and references by day 4; full eval run and E1 result by day 6. |
 | **C** | `public/` (landing page `public/index.html`, `logo.svg`, `logo-mark.svg`, `icon-180.png`, `manifest.webmanifest`, and any other static file), `docs/presentation/` (video prompt and script, slide notes, a link to the slides). | Landing page, logo, home-screen icon and manifest (the front-end half of slices 5 and 8), the demo video and the presentation. | Landing page by day 3; manifest and icon by day 6 (only needed if slice 8 happens); video by day 6; presentation by day 6. |
 
@@ -135,7 +135,7 @@ src/                  (Person A)
   http.js  prompt.js  interpret.js  pipeline.js  audio.js  meralion.js  hear.js  whisper.js  guard.js
   pages/  app.html
   client/ app.js (DOM glue, coverage-excluded)  app.css  copy.js  api.js  queue.js  cards.js
-          session.js  wav.js  clipper.js  mic.js  recorder-worklet.js
+          session.js  wav.js  clipper.js  mic.js  recorder-worklet.js  upload.js (slice 3b)
 test/                 (Person A)
         *.test.js   helpers/wav.js (makeWav)   fixtures/ (slice 3: meralion-transcription.json, meralion-error.json, r3-singlish.wav, r3-plain.wav)
 public/               (Person C; Workers static assets)
@@ -215,7 +215,7 @@ Development uses the same quota as the evals and the demo. Practice for every en
 - **Interpretation and prompt work uses the typed-text path** (`/api/text`), which spends no MERaLiON quota. Spoken text goes through the same interpret step, so this covers it.
 - **Short test clips:** say one sentence and tap Stop (the partial clip is sent), about 3–5 s instead of 15 s. For curl smoke tests use the `say` samples (about 3 s each).
 - **Cache on:** re-sending the same WAV is served from KV (`cached: true`, transcript and reading) and costs nothing, so repeat curl tests and eval re-runs reuse saved clips.
-- **Watch the counter:** `GET /api/budget` shows requests, audio seconds and tokens used. Each slice's engineer report records its MERaLiON spend. Planned spend (guess, counted audio): slice 3 under 2 min, slice 4 under 1 min, slice 5 under 2 min, slice 6 about 2 min per MERaLiON run, rehearsals about 8 min: about 16 min and under 250 requests of the 60 min / 1,000 requests.
+- **Watch the counter:** `GET /api/budget` shows requests, audio seconds and tokens used. Each slice's engineer report records its MERaLiON spend. Planned spend (guess, counted audio): slice 3 under 2 min, slice 3b under 1.5 min, slice 4 under 1 min, slice 5 under 2 min, slice 6 about 2 min per MERaLiON run, rehearsals about 8 min: about 17.5 min and under 260 requests of the 60 min / 1,000 requests.
 - The local guard (`.wrangler/state`) and a deployed guard (if deploy ever happens) would count separately, while MERaLiON's quota is one account-wide pool (IR-7). Never delete `.wrangler/state`, and add local usage from the engineer reports when judging what is left.
 
 ### Pitfalls found in the earlier attempt (baked into the slices)
@@ -287,6 +287,7 @@ There is no authentication on `/api/*`: anyone with the link can call it (accept
 | `SILENCE_RMS` | `0.01` | `src/client/wav.js` |
 | `CONTEXT_KEEP` | `3` | `src/client/session.js` |
 | `RETRY_MS` | `3000` | `src/client/queue.js` |
+| `UPLOAD_MAX_SECONDS` / `UPLOAD_MAX_BYTES` / `UPLOAD_GAP_MS` | `120` / `41943040` (40 MiB, **my call**) / `13000` (slice 3b) | `src/client/upload.js` |
 | `EVAL_MERALION_GAP_MS` | `13000` per MERaLiON call (one call per clip, so 13 s between clips; keeps under 5 a minute) | `evals/runner.js` (Person B) |
 
 ### User-facing copy (exact; in `src/client/copy.js` as `COPY`, asserted by `test/copy.test.js`)
@@ -304,6 +305,17 @@ There is no authentication on `/api/*`: anyone with the link can call it (accept
 | `cantListen` | `This browser can't listen. Type instead.` | US-8 |
 | `micBlocked` | `The microphone is blocked. iPhone Safari: tap aA, then Website Settings, then Microphone: Allow. Android Chrome: tap the icon left of the address, then Permissions, then Microphone: Allow. Or type below.` **(my call: wording)** | US-8 |
 | `newToMe` / `learnMore` | `New to me` / `Learn more` | US-14 |
+| `uploadButton` / `uploadCancel` | `Upload audio` / `Cancel upload` | US-16 |
+| `uploadSend` / `uploadDismiss` | `Send` / `Cancel` (the confirm panel's buttons) | US-16 |
+| `uploadReading` | `Reading the file` | US-16 |
+| `uploadConfirm` | `This file uses about {n} min of MERaLiON; {m} min left this month. Send?` (`{n}` rounded up, `{m}` rounded down; filled by `formatCopy`) | US-16 |
+| `uploadConfirmNoBudget` | `This file uses about {n} min of MERaLiON. Send?` (when `/api/budget` fails) | US-16 |
+| `uploadBudgetOut` | `No MERaLiON minutes left this month, so this file would go through Backup mode. Send?` | US-16 |
+| `uploadTooLong` | `This file is over 2 minutes. Trim it to 2 minutes or less and try again.` | US-16 |
+| `uploadUnreadable` | `Couldn't read this file. Try an m4a, mp3 or wav recording.` | US-16 |
+| `uploadSilent` | `No speech found in this file.` | US-16 |
+| `uploadSending` | `Sending clip {i} of {n}` | US-16 |
+| `uploadCancelled` | `Upload cancelled.` | US-16 |
 | landing tagline (in Person C's `public/index.html`) | `For when you catch no ball.` | US-1 |
 | landing privacy line (in Person C's `public/index.html`) | `Audio is sent to A*STAR's MERaLiON service to be transcribed, and is never stored by us.` | L1 |
 
@@ -369,6 +381,7 @@ These ran before or alongside slice 1; R3 (the MERaLiON check) is done. The owne
 | 1 | US-4 (typed), US-5, US-8 (typed box), US-11 | Type a Singlish line in the browser, get a card; plain English shows faded | Day 1 |
 | 2 | US-6 (+ B5 context) | Ambiguous lines show "Could mean: … or …" | Day 1–2 |
 | 3 | US-3, US-4 (speech), US-7, US-8 (mic blocked); B2, B3, B3a, B4 (OpenCode Go writes the card from the transcript), B6; folds in the slice-2 minors M5 and M6 | Tap Listen on the laptop, speak, MERaLiON's transcript → OpenCode Go → card; a failed line still counts as context; `/api/budget` shows the spend | Day 2 |
+| 3b (Should) | US-16 | Upload a voice memo (m4a/mp3/wav, up to 2 min) on `/app`: a confirm shows the MERaLiON minutes it uses and what is left, then the same cards as Listen; the same file again comes from cache; no server change | Day 2–3 (after slice 3's feedback) |
 | 4 | US-10 (B2a) | Break the MERaLiON key or hit 5 a minute: Whisper takes over, cards from the transcript alone, "Backup mode" shows | Day 3 |
 | 5 | US-1; consumes C's `public/` (landing page, logo); deploy (goal 4) deferred until the user asks | Landing page and the app on localhost (the iPhone and Android checks wait for deploy) | Day 3 |
 | 6 | US-13 (E2, feeds E1); consumes B's `evals/` PR (eval code and tests), clips and references; A integrates and reviews | One command prints the score table, the particle comparison and the E1 cards page | Day 4–5 |
@@ -740,6 +753,153 @@ afconvert -f WAVE -d LEI16@16000 -c 1 "$T/s2.aiff" test/fixtures/r3-plain.wav
 - `npx wrangler dev` starts with the Durable Object (pitfall 1).
 
 **Definition of done:** standard DoD, plus: the tests use the hand-made step 0 fixtures; the user has spoken the PRD demo sentence on the laptop and seen a MERaLiON card; MERaLiON spend for the slice (requests, audio seconds, tokens; from `/api/budget`) is in the engineer report (target: under 30 requests and 2 minutes of counted audio); the R2 result is recorded and live or recap mode is set to match; M5 and M6 are listed as fixed in the engineer report.
+
+---
+
+### Slice 3b: Upload an audio file (US-16, Should)
+
+**Stories:** US-16 (Should): upload a Singlish audio file (m4a, mp3 or wav, up to 2 minutes) and get the same cards as live listening. Origin: `decisions.md`, "audio file upload, slice after 3". **Owner:** Person A. Branch: `a/slice-3b-upload`.
+
+Upload is a second way to feed slice 3's pipeline, not a new pipeline. The phone decodes the file, turns it into the same 16 kHz mono WAV clips that Listen makes, and pushes them through the same queue to the same `/api/chunk`. So the guard, the budget, the KV cache, `interpret`, the card rendering, M5/M6 context and (once slice 4 is in) Backup mode all apply unchanged. **No server file changes in this slice.**
+
+**Depends on:** slice 3 (PR #4; build on its branch, or on `main` once it merges). Slice 4 is **not** required: if 3b merges first, a guard refusal shows "Couldn't catch that" as in slice 3, and the "budget used up" demo step waits for slice 4 (the branch is unit-tested either way).
+**User provides:** a real voice memo (m4a) recorded on their iPhone, 30–45 s, AirDropped to the laptop. Nothing else: no new secret, no config.
+
+**User flow**
+1. On `/app`, next to **Listen**, an **Upload audio** button opens a file picker (`<input type="file" accept="audio/*,.m4a,.mp3,.wav">`; the extensions are listed because iOS sometimes gives voice memos an empty MIME type).
+2. The file is checked (type, size), then decoded in the browser. While decoding, the status line says "Reading the file". Over 120 s → refused with `COPY.uploadTooLong`, nothing is sent.
+3. Before anything is sent, the app calls `GET /api/budget` and shows an inline confirm panel (`#upload-confirm`, **my call:** not `window.confirm`, which blocks and can't be styled) with the exact copy `This file uses about N min of MERaLiON; M min left this month. Send?` and two buttons, **Send** and **Cancel**.
+4. **Send:** each non-silent clip gets a pending card, in file order, and is sent through the slice 3 queue; the status line says "Sending clip i of n". Cards replace their pending cards as results arrive, exactly as for Listen. The Upload button becomes **Cancel upload** while clips are still waiting.
+5. After the last clip's result, the button goes back to **Upload audio**.
+
+**Decoding (in the browser, `app.js` glue + pure `upload.js`)**
+- `app.js`: `await file.arrayBuffer()` → `new (AudioContext || webkitAudioContext)()` → `await ctx.decodeAudioData(buf)` → `ctx.close()`. It hands `{ channels: [getChannelData(0..n-1)], sampleRate: audioBuffer.sampleRate }` to `prepareUpload`. A rejected `decodeAudioData` → `COPY.uploadUnreadable`.
+- `prepareUpload` (pure): duration check → `downmix` to mono (average of the channels) → slice 3's `resampleTo16k(mono, sampleRate)` → `splitIntoClips(samples16k, 16000, CLIP_SECONDS)` → slice 3's `clipToSend(clip, 16000)` per clip (which drops silent and under-0.5 s clips and calls `encodeWav`). Resampling the whole file once, then splitting, keeps clip boundaries exact at 15.000 s.
+- The same file always gives the same WAV bytes (same decode, deterministic resampler and encoder), so a re-upload hits the server's `hear:<sha256>` cache.
+
+**Clips**
+- `CLIP_SECONDS = 15` from `src/client/clipper.js` (imported, not copied). 40 s → clips of 15 / 15 / 10 s. The last clip is whatever is left.
+- Each clip is pushed as `{ kind: "clip", wav, uploadId, index, total }` (index 1-based over the clips actually sent) to the **same** `createClipQueue` instance as Listen and typed lines, so `send`, `onResult`, `renderResult`, `contextAfter` and retry all run unchanged. One new `sessionId` per upload, as per Listen; the context carries on, as for a new Listen.
+- **Pacing (my call):** Listen produces one clip every 15 s, but a decoded file has all its clips at once, and the guard allows only 5 MERaLiON calls a minute; without pacing the 6th to 8th clip of a 2-minute file would be refused (Backup mode or "Couldn't catch that"). So the queue waits `UPLOAD_GAP_MS = 13000` between two clips of the same upload (the same 13 s gap as `EVAL_MERALION_GAP_MS`), **except** after a cached result (no MERaLiON call was made). A 2-minute file (8 clips) takes about 2 minutes to finish; cards appear one by one.
+
+**Cap**
+- `UPLOAD_MAX_SECONDS = 120`: a decoded duration (`samples / sampleRate`) **over** 120 s is refused with `COPY.uploadTooLong` (exactly 120 s is accepted: 8 clips). Checked before resampling, so a long file costs no CPU and sends nothing.
+- `UPLOAD_MAX_BYTES = 41943040` (40 MiB) **(my call)**: a bigger file is refused with the same `uploadTooLong` copy before it is read, so a huge file is never decoded (120 s of 48 kHz stereo 24-bit WAV is 34.6 MB).
+
+**Confirm step**
+- Minutes for the file: `N = estimateMinutes(seconds)`, where `seconds` is the summed length of the clips that will actually be sent (silent clips excluded), rounded **up** to whole minutes.
+- Minutes left: `M = minutesLeft(budget) = floor(max(0, limits.seconds − used.seconds) / 60)`, rounded **down** (never promises more than is there).
+- Budget used up (`limits.seconds − used.seconds <= 0`, or `used.requests >= limits.requests`, or `used.tokens >= limits.tokens`): the panel shows `COPY.uploadBudgetOut` instead, with the same Send / Cancel.
+- `/api/budget` fails (network or non-2xx): the panel shows `COPY.uploadConfirmNoBudget` (no M); sending still goes through the guard, so nothing is unguarded.
+- The confirm is shown on every upload, including a re-upload that will be served from cache (the client can't know in advance); the demo checks `cached: true` afterwards.
+
+**Errors and edge cases**
+| Case | What happens |
+|---|---|
+| Cancel in the file picker | Nothing (no `change` event, or an empty `files` list → mode back to idle). |
+| Cancel in the confirm panel | Nothing is sent, no cards, mode back to idle; status line `COPY.uploadCancelled`. |
+| **Cancel upload** while sending | `queue.drop(i => i.uploadId === id)` removes every clip of this upload that has not started sending, and their pending cards are removed. The clip in flight finishes and renders. Status `COPY.uploadCancelled`. |
+| Not an audio file (by type and extension) | `COPY.uploadUnreadable`, nothing decoded. |
+| `decodeAudioData` rejects (corrupt file, unsupported codec) | `COPY.uploadUnreadable`. |
+| Over 120 s or over 40 MiB | `COPY.uploadTooLong`. |
+| Every clip silent | `COPY.uploadSilent`, nothing sent, no confirm. |
+| Budget used up | `COPY.uploadBudgetOut` in the confirm. On Send, the guard refuses each clip and slice 4's Whisper fallback writes the cards with "Backup mode" (before slice 4: "Couldn't catch that" + text box). |
+| Listen while uploading, or Upload while listening | Not allowed: one runs at a time. `buttonsFor(mode)` disables **Listen** while an upload is decoding, confirming or sending, and disables **Upload audio** while listening. Typed lines still work in every mode (they queue between clips, with no gap before or after them). |
+
+**Silence:** slice 3's rule, unchanged: a clip is dropped if `isSilent` (RMS below `SILENCE_RMS = 0.01`) or shorter than `MIN_SEND_SECONDS = 0.5` (`clipToSend` in `src/client/wav.js`). Applied per 15 s clip, so a memo with a silent middle sends only its speaking clips. The server's own `< 0.5 s → silent` check stays as the backstop.
+
+**Demo script** (desktop Chrome on `localhost`; phones need HTTPS, deferred with deploy)
+Prepare the files (none of these need MERaLiON):
+```bash
+T="${TMPDIR:-/tmp}"
+# about 17 s: one sentence, 11 s of silence, one sentence -> 2 clips (15 s + about 2 s)
+say -o "$T/u-short.aiff" "Eh the deadline confirm cannot shift one lah. [[slnc 11000]] Can lor, I do it tomorrow."
+afconvert -f m4af -d aac "$T/u-short.aiff" "$T/u-short.m4a" && afinfo "$T/u-short.m4a" | grep duration
+# 121 s and 40 s of silence (free: refused or skipped before any request)
+node --input-type=module -e 'import { makeWav } from "./test/helpers/wav.js"; process.stdout.write(makeWav(121, { sampleRate: 44100 }))' > "$T/u-121s.wav"
+node --input-type=module -e 'import { makeWav } from "./test/helpers/wav.js"; process.stdout.write(makeWav(40))' > "$T/u-silent-40s.wav"
+echo "not audio" > "$T/u-broken.m4a"
+```
+1. `npm run dev`, open `localhost:8787/app`, note `curl -s localhost:8787/api/budget`.
+2. **Cap (free):** Upload `u-121s.wav`: the exact "over 2 minutes" copy, nothing in Network → `/api/chunk`.
+3. **Unreadable (free):** Upload `u-broken.m4a`: the "Couldn't read this file" copy.
+4. **Silence (free):** Upload `u-silent-40s.wav`: "No speech found in this file.", no confirm, nothing sent.
+5. **Confirm and cancel (free):** Upload `u-short.m4a`: the panel reads `This file uses about 1 min of MERaLiON; M min left this month. Send?` with M from step 1. Tap **Cancel**: nothing sent.
+6. **MERaLiON spend (about 17 s, 2 requests):** Upload `u-short.m4a` again and tap **Send**: two pending cards, then a card for each sentence, in order; the status line counts the clips; the second clip waits about 13 s (pacing). Network shows two `/api/chunk` calls with `source: "meralion"`, `cached: false`.
+7. **Cache hit (free):** Upload the same `u-short.m4a` once more and Send: the same cards, `cached: true` on both, no 13 s wait, and `/api/budget` requests and seconds unchanged from step 6.
+8. **Busy rule:** tap Listen: Upload audio is disabled. Stop. Start an upload: Listen is disabled until the last card or Cancel upload.
+9. **Real file (about 30–45 s, 2–3 requests):** AirDrop an iPhone voice memo (m4a, 30–45 s of the user speaking Singlish) to the laptop and upload it. Check the clip count matches the length, the cards read in order, and particles are kept as well as with live Listen.
+10. **Cancel upload (about 15 s, 1 request):** make a second short file with different words (`say -o "$T/u-cancel.aiff" "Boss say must finish today lah. [[slnc 11000]] Okay can."`, then `afconvert` as above), upload it, **Send**, and tap **Cancel upload** after the first card, during the 13 s wait: the second pending card disappears and Network shows only one `/api/chunk`. (A cached file can't be used here: with no wait, every clip is sent before you can tap.)
+11. `curl -s localhost:8787/api/budget`: the slice's spend (target below).
+12. After slice 4 has merged only: budget used up is shown by unit tests; there is no free way to empty the real budget, so it is not demoed.
+*Feedback wanted:* is the confirm copy clear; is the 13 s pacing between clips acceptable for a 2-minute file; do real voice memos decode in Chrome (and later Safari); card quality versus live Listen.
+
+**Files**
+- Create: `src/client/upload.js`, `test/upload.test.js`.
+- Modify: `src/client/queue.js` (`gapMs`, `sleep`, `drop`), `src/client/copy.js` (upload keys), `src/client/app.js` (glue: file input, decode, confirm panel, push clips, cancel, button states), `src/pages/app.html` (`#upload` button, hidden `#upload-file` input, `#upload-confirm` panel, `#upload-status` line), `src/client/app.css` (panel and disabled states, dark mode), `src/index.js` (import `./client/upload.js` into the `client` map; `test/config.test.js` already fails if it is missing).
+- Tests: create `test/upload.test.js`; extend `test/queue.test.js`, `test/copy.test.js`, `test/pages.test.js`.
+- **Unchanged:** every server file (`src/pipeline.js`, `src/hear.js`, `src/meralion.js`, `src/guard.js`, `src/audio.js`, `src/router.js`), `src/client/wav.js`, `src/client/clipper.js`, `src/client/api.js`, `src/client/session.js`, `src/client/cards.js`, `wrangler.toml`, `.dev.vars.example`.
+
+**Interfaces produced**
+- `src/client/upload.js` (pure; imports `CLIP_SECONDS` from `./clipper.js`, `resampleTo16k`, `clipToSend` from `./wav.js`, `COPY` from `./copy.js`):
+  - Constants: `UPLOAD_MAX_SECONDS = 120`, `UPLOAD_MAX_BYTES = 41943040`, `UPLOAD_GAP_MS = 13000`, `UPLOAD_ACCEPT = "audio/*,.m4a,.mp3,.wav"`, `UPLOAD_EXTENSIONS = ["m4a", "mp3", "wav"]`.
+  - `checkUpload({ name, type, size }) -> { ok: true } | { ok: false, reason: "not_audio" | "too_big", copy }`: ok if `type` starts with `audio/` **or** the lower-cased extension of `name` is in `UPLOAD_EXTENSIONS`; `size > UPLOAD_MAX_BYTES` → `too_big` with `COPY.uploadTooLong`; `not_audio` → `COPY.uploadUnreadable`.
+  - `checkDuration(seconds) -> { ok: true } | { ok: false, reason: "too_long", copy: COPY.uploadTooLong }`: refuses `seconds > UPLOAD_MAX_SECONDS`.
+  - `downmix(channels: Float32Array[]) -> Float32Array`: one channel is returned as is; otherwise the per-sample mean.
+  - `splitIntoClips(samples: Float32Array, sampleRate: number, clipSeconds = CLIP_SECONDS) -> Float32Array[]`: consecutive `subarray`s of `Math.round(sampleRate * clipSeconds)` samples; the last holds the remainder; empty input → `[]`.
+  - `prepareUpload({ channels, sampleRate }) -> { ok: true, wavs: Uint8Array[], seconds: number } | { ok: false, reason: "too_long" | "silent", copy }`: `checkDuration(channels[0].length / sampleRate)` → `downmix` → `resampleTo16k` → `splitIntoClips(…, 16000)` → `clipToSend(clip, 16000)`, keeping non-null results. `seconds` = sum of the sent clips' lengths (`(wav.length − 44) / 32000`). No clip left → `silent` with `COPY.uploadSilent`.
+  - `estimateMinutes(seconds) -> number`: `Math.ceil(seconds / 60)`.
+  - `minutesLeft(budget) -> number`: `Math.floor(Math.max(0, budget.limits.seconds − budget.used.seconds) / 60)`.
+  - `budgetOut(budget) -> boolean`: seconds left `<= 0`, or `used.requests >= limits.requests`, or `used.tokens >= limits.tokens`.
+  - `formatCopy(template, vars) -> string`: replaces `{name}` placeholders; an unknown placeholder is left as is.
+  - `planConfirm(seconds, budget | null) -> { kind: "confirm" | "budget_out", text }`: `null` → `confirm` with `formatCopy(COPY.uploadConfirmNoBudget, { n })`; `budgetOut` → `budget_out` with `COPY.uploadBudgetOut`; else `confirm` with `formatCopy(COPY.uploadConfirm, { n, m })`.
+  - `uploadItems(wavs, uploadId) -> item[]`: `{ kind: "clip", wav, uploadId, index: i + 1, total: wavs.length }`.
+  - `uploadGap(next, prev, prevResult) -> number`: `UPLOAD_GAP_MS` when `next` and `prev` are clips of the same `uploadId` and `prevResult?.cached !== true`; otherwise `0` (Listen clips, typed lines, a different upload).
+  - `progressText(index, total) -> string`: `formatCopy(COPY.uploadSending, { i: index, n: total })`.
+  - `buttonsFor(mode: "idle" | "listening" | "decoding" | "confirming" | "sending") -> { listenDisabled, uploadDisabled, uploadLabel }`: idle → `false, false, COPY.uploadButton`; listening → `false, true, COPY.uploadButton`; decoding and confirming → `true, true, COPY.uploadButton`; sending → `true, false, COPY.uploadCancel`.
+- `src/client/queue.js`: `createClipQueue({ send, onResult, gapMs = () => 0, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) })`. After an item's `onResult`, if another item is waiting, it awaits `sleep(gapMs(next, item, result))` when that is above 0, then sends `next` (re-reading the head after the sleep, so a `drop` during the gap is honoured). New `drop(pred) -> item[]`: removes and returns every waiting item that matches and has **not** started sending; the in-flight item is never dropped. `push`, `size`, `idle` unchanged; existing queue tests still pass with the defaults.
+- `src/client/copy.js`: the upload keys in the section 1 COPY table.
+- `src/client/app.js` (glue, no decisions): `mode` variable; `applyButtons(buttonsFor(mode))`; Upload click → `uploadFile.click()`; `change` → `checkUpload` → decode → `prepareUpload` → `api.budget()` (caught → `null`) → `planConfirm` → panel; Send → one `sessionId = crypto.randomUUID()`, `uploadId`, `enqueue(item)` for each of `uploadItems(...)`; the queue is created with `gapMs: uploadGap`; in `onResult`, status = `progressText` for the next item and `mode = "idle"` after `item.index === item.total`; Cancel upload → `queue.drop(…)` and remove the dropped items' pending cards.
+
+**Tests**
+- `test/upload.test.js` (synthetic `Float32Array`s, no `AudioContext`; WAV lengths read back with `wavInfo` from `../src/audio.js`):
+  - `constants: UPLOAD_MAX_SECONDS 120, UPLOAD_GAP_MS 13000, UPLOAD_MAX_BYTES 41943040, UPLOAD_ACCEPT "audio/*,.m4a,.mp3,.wav"`; `uses CLIP_SECONDS from clipper.js (15)`.
+  - `checkUpload`: `{ name: "memo.m4a", type: "audio/x-m4a", size: 1e6 }` ok; `{ name: "Memo.M4A", type: "", size: 1e6 }` ok (empty iOS type); `{ name: "song.mp3", type: "audio/mpeg" }` ok; `{ name: "notes.pdf", type: "application/pdf" }` → `not_audio` with `COPY.uploadUnreadable`; `size 41943041` → `too_big`; `size 41943040` ok.
+  - **`a 121 s file is refused`**: `prepareUpload({ channels: [new Float32Array(121 * 48000).fill(0.3)], sampleRate: 48000 })` → `{ ok: false, reason: "too_long", copy: COPY.uploadTooLong }`; **`exactly 120 s is accepted and gives 8 clips`**.
+  - **`40 s gives 3 clips of 15/15/10`**: 40 s of a 0.3-amplitude 440 Hz sine at 16 kHz → 3 WAVs, `wavInfo(...).seconds` = `15`, `15`, `10`; `seconds === 40`. The same at 48 kHz (resampled) and at 44.1 kHz (each within 1 sample of 15/15/10).
+  - `splitIntoClips(new Float32Array(640000), 16000, 15)` → lengths `[240000, 240000, 160000]`; `30 s → 2 clips`; `empty → []`; `clips are continuous` (a ramp keeps its values across boundaries).
+  - `downmix: [0.5] and [-0.5] → 0; [0.4] and [0.4] → 0.4; a single channel is returned as is`.
+  - `stereo 40 s file → 3 clips` (downmix then split).
+  - **silence:** `40 s with seconds 15–30 at zero → 2 clips (the 1st and 3rd), seconds 25`; `all zeros → { ok: false, reason: "silent", copy: COPY.uploadSilent }`; `a 30.3 s file → 2 clips (the 0.3 s tail is dropped)`.
+  - **`estimateMinutes rounds up`**: `0 → 0`, `1 → 1`, `40 → 1`, `60 → 1`, `60.5 → 2`, `120 → 2`.
+  - `minutesLeft`: `used.seconds 0 → 60`; `120 → 58`; `120.5 → 57`; `3590 → 0`; `3600 → 0`; `3700 → 0` (never negative).
+  - `budgetOut`: `used.seconds 3600 → true`; `used.requests 1000 → true`; `used.tokens 100000 → true`; `used 3599 s, 999 requests, 99999 tokens → false`.
+  - **confirm copy:** `planConfirm(40, budget with used.seconds 120)` → `{ kind: "confirm", text: "This file uses about 1 min of MERaLiON; 58 min left this month. Send?" }`; `planConfirm(17, fresh budget)` → `"This file uses about 1 min of MERaLiON; 60 min left this month. Send?"`; `planConfirm(120, used.seconds 3000)` → `"This file uses about 2 min of MERaLiON; 10 min left this month. Send?"`; `planConfirm(40, null)` → `"This file uses about 1 min of MERaLiON. Send?"`; `planConfirm(40, used.tokens 100000)` → `{ kind: "budget_out", text: COPY.uploadBudgetOut }`.
+  - `formatCopy("{a} and {b}", { a: 1 })` → `"1 and {b}"`.
+  - `uploadItems` gives `index` 1..n, the same `total`, `kind "clip"`.
+  - `uploadGap`: two clips of upload `u1`, prev `cached: false` → `13000`; prev `cached: true` → `0`; prev errored (result `undefined`) → `13000`; next is a text item → `0`; prev is a Listen clip (no `uploadId`) → `0`; different upload ids → `0`.
+  - `progressText(2, 3) === "Sending clip 2 of 3"`.
+  - `buttonsFor`: the five modes give exactly the table in the interface above.
+- `test/queue.test.js`:
+  - `gapMs is awaited between items`: fake `sleep` records `[13000]` for two upload clips; nothing before the first or after the last; `gapMs` returning 0 never calls `sleep`.
+  - `drop removes waiting items, never the one in flight`: push A (send held), B, C of upload `u1`; `drop(i => i.uploadId === "u1")` returns `[B, C]`; `send` never sees B or C; A's `onResult` still runs; `size()` is 0 after A.
+  - `drop during the gap removes the next item` (the head is re-read after `sleep`).
+  - `a typed line pushed during an upload is sent in push order with no gap around it`.
+- `test/copy.test.js`: every new key equals the exact text in the COPY table.
+- `test/pages.test.js`: `app.html has an Upload audio button (#upload), a hidden file input #upload-file with accept="audio/*,.m4a,.mp3,.wav", an #upload-confirm panel and an #upload-status line with role="status"`.
+- `test/config.test.js`: no change (it already fails if `src/client/upload.js` is not imported in `src/index.js`); `test/all-modules.test.js` picks up `upload.js` by itself.
+
+**Acceptance criteria**
+- An uploaded m4a, mp3 or wav of up to 120 s produces the same cards, in file order, as the same speech through Listen: same `/api/chunk`, guard, cache and card rendering; no server change.
+- A file over 120 s (or over 40 MiB) is refused with the exact copy, and nothing is sent.
+- Nothing is sent before the user taps **Send** on the confirm panel, which shows the exact copy with N rounded up and M rounded down.
+- Silent 15 s clips are never sent; an all-silent file sends nothing.
+- Clips of one upload are at least 13 s apart unless the previous one was cached, so an upload alone never trips the 5-a-minute limit.
+- Listen and Upload never run at the same time; typed lines work throughout.
+- Re-uploading the same file is served from cache (`cached: true`) and spends no MERaLiON quota.
+- `app.js` holds no decision: every check, number and copy string comes from `upload.js`, `queue.js` or `copy.js`.
+
+**Definition of done:** standard DoD (coverage over 80% lines, branches and functions; `upload.js` counts toward it and `app.js` stays excluded), plus: the user has uploaded the synthetic file twice (second time `cached: true`) and a real iPhone voice memo, and the feedback is in `reports/slice-3b-feedback.md`; MERaLiON spend for the slice is in `reports/slice-3b-engineer.md` (target: under 10 requests and 90 s of counted audio). Reports use the names `slice-3b-engineer` and `slice-3b-reviewer`.
 
 ---
 

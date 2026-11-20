@@ -122,3 +122,16 @@ Applied the `decisions.md` updates ("MERaLiON transcript-only", "no deploy for n
 - **No removed keys:** a search of slice 3 and the plan finds no `ACCESS_CODE`/`DEMO_KEY` use; slice 3 now has a config test that fails if either appears or if `.dev.vars.example` lists anything but the two real secrets.
 - **Open for the PM/PRD:** the landing privacy line ("transcribed and understood", PRD L1, copy table and Person C's contract) still says MERaLiON also understands; with transcript-only it should say "transcribed". Left unchanged because it is a PRD/C contract.
 - **README:** the "Speech" bullet now says MERaLiON-3 (3B ASR) turns Singlish audio into an exact transcript and OpenCode Go explains the meaning and tone; no "hears and explains" wording was present.
+
+## Revision 6: slice 3b, upload an audio file (US-16, Should)
+
+Applied `decisions.md` ("audio file upload, slice after 3") to `IMPL.md`, built against what slice 3 actually ships on `a/slice-3-listen` (PR #4). Document edit only: no code, no commit; `PRD.md` untouched (the PM adds US-16).
+
+- **New slice 3b** (Person A, branch `a/slice-3b-upload`), placed after slice 3; no renumbering. Client-only: no server file changes.
+- **Reuse:** `decodeAudioData` → `downmix` → slice 3's `resampleTo16k` → `splitIntoClips` with `CLIP_SECONDS = 15` → slice 3's `clipToSend` (silence RMS < 0.01 and < 0.5 s dropped, `encodeWav`) → the same `createClipQueue` and `/api/chunk`, so guard, cache, cards, M5/M6 context and (after slice 4) Backup mode apply unchanged.
+- **New pure module** `src/client/upload.js` (`checkUpload`, `checkDuration`, `downmix`, `splitIntoClips`, `prepareUpload`, `estimateMinutes` (ceil), `minutesLeft` (floor), `budgetOut`, `planConfirm`, `formatCopy`, `uploadItems`, `uploadGap`, `progressText`, `buttonsFor`); `queue.js` gains `gapMs`, `sleep` and `drop`. `app.js` stays glue.
+- **Cap and confirm:** over 120 s (or 40 MiB, my call) refused with exact copy; confirm copy `This file uses about N min of MERaLiON; M min left this month. Send?`, plus no-budget and budget-out variants. Eleven COPY keys added.
+- **My call, pacing:** the guard allows 5 MERaLiON calls a minute and a decoded file has all its clips at once, so clips of one upload are sent 13 s apart (skipped after a cached result). A 2-minute file takes about 2 minutes.
+- **Tests** with exact values (121 s refused, 120 s gives 8 clips, 40 s gives 15/15/10, rounding, confirm strings, gap and drop). Demo uses free checks first, then a 17 s synthetic m4a sent twice (second is cached), a real iPhone voice memo, and one paid cancel; target under 10 requests and 90 s.
+- Overview, layout, constants, Team split and planned spend updated; coverage settings unchanged (`upload.js` counts, `app.js` stays excluded).
+- **For the user:** if 3b merges before slice 4, a refused clip shows "Couldn't catch that" rather than Backup mode, and the budget-out copy's "Backup mode" wording is only true after slice 4.
