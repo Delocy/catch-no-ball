@@ -33,6 +33,6 @@ export async function handleText(request, env, deps = { interpret }) {
     return json({ status: "ok", source: "text", transcript, sentences, passes, cached: false, hint: null });
   } catch (e) {
     console.error(`interpret failed: ${e && e.message}`);
-    return json({ status: "meaning_unavailable", source: "text", transcript, sentences: [], passes: 1, cached: false, hint: null });
+    return json({ status: "meaning_unavailable", source: "text", transcript, sentences: [], passes: (e && e.passes) ?? 1, cached: false, hint: null });
   }
 }

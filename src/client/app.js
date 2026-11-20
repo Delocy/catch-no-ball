@@ -2,6 +2,7 @@
 // lives in a tested module: cards.js, queue.js, api.js.
 import { createApi } from "./api.js";
 import { createClipQueue } from "./queue.js";
+import { nextContext } from "./session.js";
 import { cardHtml, renderResult, shouldAutoScroll } from "./cards.js";
 
 const api = createApi({ fetchImpl: (...a) => fetch(...a) });
@@ -9,6 +10,7 @@ const sessionId = crypto.randomUUID();
 const cardsEl = document.getElementById("cards");
 const form = document.getElementById("typed");
 const input = document.getElementById("text");
+let context = []; // last few `said` strings, sent with each line
 const texts = new Map(); // card id -> typed text, for retry
 let nextId = 1;
 
@@ -26,10 +28,11 @@ function insert(html, replaceId) {
 }
 
 const queue = createClipQueue({
-  send: (item) => api.sendText({ text: item.text, sessionId, context: [] }),
+  send: (item) => api.sendText({ text: item.text, sessionId, context }),
   onResult(item, result, error) {
     const { html, retryable } = renderResult(item, result, error);
     insert(html, item.cardId);
+    if (!error && result && result.status === "ok") context = nextContext(context, result.sentences);
     if (!retryable) texts.delete(item.cardId);
   },
 });

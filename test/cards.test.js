@@ -142,3 +142,36 @@ test("renderResult: several sentences get ids c1, c1-1, c1-2", () => {
 test("renderResult: silent gives empty html and is not retryable", () => {
   assert.deepEqual(renderResult({ cardId: "c", text: "t" }, result({ status: "silent" })), { html: "", retryable: false });
 });
+
+const R = [{ meaning: "Is it really okay?", tone: "doubtful" }, { meaning: "Fine, okay.", tone: "neutral" }];
+const unsureS = () => sentence({ said: "can meh", confident: false, tone: "doubtful", readings: R, terms: [{ term: "meh", gloss: "doubt", known: true }] });
+
+test("an unsure sentence becomes an unsure card with two readings", () => {
+  const [m] = toCardModels(result({ sentences: [unsureS()] }));
+  assert.equal(m.kind, "unsure");
+  assert.equal(m.said, "can meh");
+  assert.deepEqual(m.readings, R);
+  assert.match(m.termsHtml, /<u class="term" data-term="meh">meh<\/u>/);
+});
+
+test("an unsure sentence renders \"Could mean:\" A \"or\" B with a tone chip for each", () => {
+  const html = cardHtml(toCardModels(result({ sentences: [unsureS()] }))[0], "c1");
+  assert.match(html, /class="card unsure"/);
+  assert.match(html, /Could mean:[\s\S]*Is it really okay\?[\s\S]*doubtful[\s\S]*>or<[\s\S]*Fine, okay\.[\s\S]*neutral/);
+  assert.equal((html.match(/class="chip /g) || []).length, 2);
+});
+
+test("an unsure sentence with the wrong number of readings falls back to unavailable, never one guess", () => {
+  const models = toCardModels(result({ sentences: [{ ...unsureS(), readings: [R[0]] }] }));
+  assert.equal(models[0].kind, "unavailable");
+});
+
+test("unsure card escapes reading text", () => {
+  const html = cardHtml({ kind: "unsure", said: "x", termsHtml: "x", readings: [{ meaning: "<b>a</b>", tone: "doubtful" }, R[1]] }, "c");
+  assert.ok(!html.includes("<b>"));
+});
+
+test("a confident sentence never renders \"Could mean\"", () => {
+  const html = cardHtml(toCardModels(result({ sentences: [sentence()] }))[0], "c1");
+  assert.ok(!html.includes("Could mean"));
+});

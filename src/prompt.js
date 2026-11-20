@@ -24,14 +24,14 @@ Rules:
 - "tone" must be exactly one of: ${TONES.join(", ")}.
 - "terms" lists the Singlish words and particles in the sentence (lah, lor, meh, one, confirm and so on), each with a short gloss. Set known: false for a term you do not recognise.
 - If particles seem missing, infer tone from wording and context. Never guess confidently. Use confident:false.
-- When confident is true, "readings" is []. When confident is false, give exactly 2 plausible readings, each with its own meaning and tone.`;
+- When confident is true, "readings" is []. When confident is false, give exactly 2 plausible readings that differ from each other, each with its own meaning and tone; use two different tones when the tones could differ.`;
 
 export function buildMessages({ transcript, context = [], retry = false } = {}) {
   const lines = cleanContext(context).map((c) => `Earlier: ${c}`);
   lines.push(`Transcript: ${transcript}`);
   let system = SYSTEM;
   if (retry) {
-    system += "\n- This is a second pass: you were unsure before. Use the earlier sentences to settle it if you can, and otherwise give exactly 2 readings.";
+    system += "\n- Reconsider with the extra context. If still unsure, set confident false and give exactly two readings.";
   }
   return [
     { role: "system", content: system },

@@ -5,6 +5,7 @@ import apiJs from "./client/api.js";
 import cardsJs from "./client/cards.js";
 import copyJs from "./client/copy.js";
 import queueJs from "./client/queue.js";
+import sessionJs from "./client/session.js";
 import { createRouter } from "./router.js";
 import { handleText } from "./pipeline.js";
 
@@ -15,6 +16,7 @@ const client = {
   "cards.js": cardsJs,
   "copy.js": copyJs,
   "queue.js": queueJs,
+  "session.js": sessionJs,
 };
 
 export default createRouter({ app: appHtml, client }, { handleText });

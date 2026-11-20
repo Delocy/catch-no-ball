@@ -60,3 +60,19 @@ test("buildMessages caps an oversized context line", () => {
   const c = buildMessages({ transcript: "t", context: ["y".repeat(5000)] })[1].content;
   assert.ok(c.length < 1200);
 });
+
+test("the retry prompt asks to reconsider and give exactly two readings", () => {
+  const [system] = buildMessages({ transcript: "can meh", context: ["a"], retry: true });
+  assert.ok(system.content.includes("Reconsider with the extra context. If still unsure, set confident false and give exactly two readings."));
+});
+
+test("the first-pass prompt does not ask to reconsider", () => {
+  const [system] = buildMessages({ transcript: "can meh" });
+  assert.ok(!system.content.includes("Reconsider"));
+});
+
+test("the base readings rule asks for two readings that differ, with different tones where they could", () => {
+  const [system] = buildMessages({ transcript: "can meh" });
+  assert.match(system.content, /exactly 2 plausible readings that differ from each other/);
+  assert.match(system.content, /two different tones when the tones could differ/);
+});
