@@ -9,6 +9,7 @@ import micJs from "./client/mic.js";
 import queueJs from "./client/queue.js";
 import recorderWorkletJs from "./client/recorder-worklet.js";
 import sessionJs from "./client/session.js";
+import uploadJs from "./client/upload.js";
 import wavJs from "./client/wav.js";
 import { createRouter } from "./router.js";
 import { handleText, handleChunk, handleBudget } from "./pipeline.js";
@@ -26,6 +27,7 @@ const client = {
   "queue.js": queueJs,
   "recorder-worklet.js": recorderWorkletJs,
   "session.js": sessionJs,
+  "upload.js": uploadJs,
   "wav.js": wavJs,
 };
 

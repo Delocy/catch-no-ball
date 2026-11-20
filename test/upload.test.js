@@ -83,7 +83,6 @@ test("splitIntoClips", () => {
 });
 
 test("downmix", () => {
-  assert.equal(downmix([Float32Array.of(0.5)])[0], 0);
   const a = Float32Array.of(0.5, 0.4);
   assert.equal(downmix([a]), a);
   assert.equal(downmix([Float32Array.of(0.5), Float32Array.of(-0.5)])[0], 0);
