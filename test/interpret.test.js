@@ -315,7 +315,7 @@ test("pass 1 unsure with 0 readings still retries; call 1 has no Reconsider line
 
 test("a mixed clip with one unsure sentence makes exactly 2 calls and keeps the plain sentence verbatim", async () => {
   const plain = sentence({ said: "Let us begin.", hasSinglish: false, meaning: "", tone: "neutral", terms: [] });
-  const body = (u) => JSON.stringify({ sentences: [plain, JSON.parse(u)] });
+  const body = (u) => JSON.stringify({ sentences: [plain, JSON.parse(u).sentences[0]] });
   const f = fakeFetch(() => chatResponse(body(unsure())));
   const r = await interpret({ transcript: "Let us begin. can meh", context: [], sessionId: "s" }, KEY, f);
   assert.equal(f.seen.length, 2);
@@ -326,7 +326,7 @@ test("a mixed clip with one unsure sentence makes exactly 2 calls and keeps the 
 test("known limit: if the retry rewords a plain sentence, it is dropped (never shown reworded)", async () => {
   const plain = (said) => sentence({ said, hasSinglish: false, meaning: "", tone: "neutral", terms: [] });
   let n = 0;
-  const f = fakeFetch(() => chatResponse(JSON.stringify({ sentences: [plain(n++ === 0 ? "Let us begin." : "Let's start."), JSON.parse(unsure())] })));
+  const f = fakeFetch(() => chatResponse(JSON.stringify({ sentences: [plain(n++ === 0 ? "Let us begin." : "Let's start."), JSON.parse(unsure()).sentences[0]] })));
   const r = await interpret({ transcript: "Let us begin. can meh", context: [], sessionId: "s" }, KEY, f);
   assert.equal(r.sentences.length, 1);
   assert.equal(r.sentences[0].said, "can meh");
