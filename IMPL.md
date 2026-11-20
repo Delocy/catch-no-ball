@@ -183,7 +183,7 @@ Secrets come only from `env`: `.dev.vars` locally (gitignored) and `npx wrangler
 | Item | Kind | Added in | Value / note |
 |---|---|---|---|
 | `OPENCODE_API_KEY` | secret | Slice 1 | The course key. One of the two secrets, in `.dev.vars` at the project root. |
-| `[[rules]] type = "Text"` | wrangler.toml | Slice 1 | `globs = ["src/**/*.html", "src/**/*.css", "src/client/**/*.js"]`, `fallthrough = false` (no `.svg`: the logo is a static asset now) |
+| `[[rules]] type = "Text"` | wrangler.toml | Slice 1 | `globs = ["**/*.html", "**/*.css", "**/client/*.js"]`, `fallthrough = false` (wrangler resolves rule globs relative to `src/`, so a `src/` prefix matches nothing; found in slice 1) (no `.svg`: the logo is a static asset now) |
 | `[assets] directory = "./public"`, `run_worker_first = ["/app", "/api/*", "/client/*"]` | wrangler.toml | Slice 1 | Serves Person C's `public/` as static assets (routing in section 1). Added by A in slice 1 because `public/logo.svg` and `public/logo-mark.svg` are already committed; C needs nothing from A for it and just edits files in `public/`. |
 | `MERALION_API_KEY` | secret | Slice 3 | The user's key (Q2). Put in `.dev.vars` by the user; the slice 3 engineer reads it from there for the R3 check. |
 | `[[durable_objects.bindings]]` + `[[migrations]]` | wrangler.toml | Slice 3 | `name = "MERALION_GUARD"`, `class_name = "MeralionGuard"`; `tag = "v1"`, `new_sqlite_classes = ["MeralionGuard"]`. **Added in the same change as `export { MeralionGuard } from "./guard.js"` in `src/index.js`.** The guard ships with the first MERaLiON call. |

@@ -1,4 +1,4 @@
-import { TONES, buildMessages } from "./prompt.js";
+import { TONES, buildMessages, cleanContext } from "./prompt.js";
 
 export const OPENCODE_BASE_URL = "https://opencode.ai/inference/go/v1";
 export const OPENCODE_MODEL = "deepseek-v4.1-flash";
@@ -119,8 +119,8 @@ export function enforceVerbatim(transcript, sentences) {
 }
 
 export async function interpret({ transcript, context, sessionId }, env, fetchImpl = fetch) {
-  const clean = Array.isArray(context) ? context.filter((c) => typeof c === "string") : [];
-  const messages = buildMessages({ transcript, context: clean.slice(-1) });
+  if (!env || !env.OPENCODE_API_KEY) throw new InterpretError("OPENCODE_API_KEY is not set");
+  const messages = buildMessages({ transcript, context: cleanContext(context).slice(-1) });
   let res;
   try {
     res = await fetchImpl(`${OPENCODE_BASE_URL}/chat/completions`, {

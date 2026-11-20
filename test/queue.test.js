@@ -66,3 +66,13 @@ test("an item pushed while running is picked up", async () => {
   await q.idle();
   assert.deepEqual(done, [1, 2]);
 });
+
+test("an onResult that throws is logged", async (t) => {
+  const logged = [];
+  t.mock.method(console, "error", (...a) => logged.push(a.join(" ")));
+  const q = createClipQueue({ send: async () => 1, onResult: () => { throw new Error("ui bug"); } });
+  q.push({ kind: "text", text: 1 });
+  await q.idle();
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /ui bug/);
+});

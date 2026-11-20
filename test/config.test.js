@@ -42,6 +42,8 @@ test("wrangler.toml has the Text rule and [assets] directory ./public with run_w
   assert.match(toml, /compatibility_date = "2025-08-01"/);
   assert.match(toml, /type = "Text"/);
   assert.match(toml, /fallthrough = false/);
+  // Globs are relative to the entry file's folder (src/). "src/**" matches nothing and breaks the build.
+  assert.ok(toml.includes('globs = ["**/*.html", "**/*.css", "**/client/*.js"]'), "Text-rule globs changed");
   assert.match(toml, /\[assets\]/);
   assert.match(toml, /directory = "\.\/public"/);
   const rwf = toml.match(/run_worker_first = \[([^\]]*)\]/);

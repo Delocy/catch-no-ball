@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { escapeHtml, markTerms, toCardModels, cardHtml, shouldAutoScroll } from "../src/client/cards.js";
+import { escapeHtml, markTerms, toCardModels, cardHtml, shouldAutoScroll, renderResult } from "../src/client/cards.js";
 import { sentence } from "./helpers/replies.js";
 
 const result = (over) => ({ status: "ok", source: "text", transcript: "t", sentences: [], passes: 1, cached: false, hint: null, ...over });
@@ -115,4 +115,30 @@ test("a pending card shows the typed text and the Translating label, escaped", (
 
 test("an unknown card kind renders as an empty string", () => {
   assert.equal(cardHtml({ kind: "mystery" }, "z"), "");
+});
+
+test("renderResult: an API error becomes an unavailable card holding the typed text, retryable, in place of the pending card", () => {
+  const out = renderResult({ cardId: "card-3", text: "hello <lah>" }, undefined, new Error("network"));
+  assert.match(out.html, /class="card unavailable" id="card-3"/);
+  assert.match(out.html, /hello &lt;lah&gt;/);
+  assert.match(out.html, /Meaning unavailable, tap to retry/);
+  assert.equal(out.retryable, true);
+});
+
+test("renderResult: a meaning_unavailable result is retryable; an ok result is not", () => {
+  const item = { cardId: "c1", text: "x" };
+  assert.equal(renderResult(item, result({ status: "meaning_unavailable", transcript: "x" })).retryable, true);
+  assert.equal(renderResult(item, result({ sentences: [sentence()] })).retryable, false);
+});
+
+test("renderResult: several sentences get ids c1, c1-1, c1-2", () => {
+  const sentences = [sentence({ said: "a lah" }), sentence({ said: "b", hasSinglish: false }), sentence({ said: "c lor" })];
+  const { html } = renderResult({ cardId: "c1", text: "t" }, result({ sentences }));
+  assert.match(html, /id="c1"/);
+  assert.match(html, /id="c1-1"/);
+  assert.match(html, /id="c1-2"/);
+});
+
+test("renderResult: silent gives empty html and is not retryable", () => {
+  assert.deepEqual(renderResult({ cardId: "c", text: "t" }, result({ status: "silent" })), { html: "", retryable: false });
 });

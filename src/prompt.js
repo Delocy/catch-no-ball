@@ -1,5 +1,16 @@
 export const TONES = ["firm", "reluctant", "doubtful", "joking", "casual", "neutral"];
 export const SETTING = "Office meeting";
+export const CONTEXT_KEEP = 3;
+export const MAX_CONTEXT_CHARS = 1000;
+
+// The one place context is cleaned: strings only, last CONTEXT_KEEP, each capped.
+export function cleanContext(context) {
+  if (!Array.isArray(context)) return [];
+  return context
+    .filter((c) => typeof c === "string" && c.trim())
+    .slice(-CONTEXT_KEEP)
+    .map((c) => c.slice(0, MAX_CONTEXT_CHARS));
+}
 
 const SYSTEM = `You help a newcomer to Singapore understand Singlish. The setting is: ${SETTING}. The listener is a newcomer at a Singapore office. In this setting, "confirm" means "definitely".
 
@@ -16,8 +27,7 @@ Rules:
 - When confident is true, "readings" is []. When confident is false, give exactly 2 plausible readings, each with its own meaning and tone.`;
 
 export function buildMessages({ transcript, context = [], retry = false } = {}) {
-  const earlier = (Array.isArray(context) ? context : []).filter((c) => typeof c === "string" && c.trim());
-  const lines = earlier.map((c) => `Earlier: ${c}`);
+  const lines = cleanContext(context).map((c) => `Earlier: ${c}`);
   lines.push(`Transcript: ${transcript}`);
   let system = SYSTEM;
   if (retry) {

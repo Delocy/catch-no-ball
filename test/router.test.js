@@ -87,3 +87,14 @@ test("handlers are called with exactly (request, env) so handleText's deps defau
   assert.equal(args.length, 2);
   assert.deepEqual(args[1], { E: 1 });
 });
+
+test("a throwing handler is logged (message only) before the 500", async (t) => {
+  const logged = [];
+  t.mock.method(console, "error", (...a) => logged.push(a.join(" ")));
+  const router = createRouter({ app: "", client: {} }, { handleText: async () => { throw new Error("boom detail"); } });
+  await router.fetch(new Request("http://x/api/text", { method: "POST", body: '{"secret":"s3cr3t"}' }), {}, {});
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /POST \/api\/text/);
+  assert.match(logged[0], /boom detail/);
+  assert.doesNotMatch(logged[0], /s3cr3t/);
+});

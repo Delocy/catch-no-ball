@@ -5,5 +5,6 @@
   { "time": "2026-11-20T15:30:00+08:00", "step": "implement (GREEN)", "status": "done", "note": "npm test 99 pass 0 fail 4 todo; coverage exit 0" },
   { "time": "2026-11-20T15:45:00+08:00", "step": "smoke with wrangler dev", "status": "progress", "note": "Found 2 bugs: Text rule globs are relative to src/; router passed ctx as handleText deps. Fixed with tests." },
   { "time": "2026-11-20T16:00:00+08:00", "step": "coordinator note: empty content", "status": "done", "note": "No max_tokens sent; empty/null content throws InterpretError; unit test added" },
-  { "time": "2026-11-20T16:10:00+08:00", "step": "smoke + reports", "status": "done", "note": "Real OpenCode Go card for the PRD sentence: tone firm. 101 tests, coverage 99/98/98." }
+  { "time": "2026-11-20T16:10:00+08:00", "step": "smoke + reports", "status": "done", "note": "Real OpenCode Go card for the PRD sentence: tone firm. 101 tests, coverage 99/98/98." },
+  { "time": "2026-11-20T17:00:00+08:00", "step": "review fixes", "status": "done", "note": "I1, I2, I3 and Minors 1-6, 10a fixed; others deferred in the md. 109 tests pass, coverage 99/98.5/98." }
 ]

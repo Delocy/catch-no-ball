@@ -35,7 +35,7 @@ for (const name of ["logo.svg", "logo-mark.svg"]) {
 
 // The landing contract (Person C's public/index.html). Todo until the file exists.
 const hasLanding = existsSync(new URL("public/index.html", root));
-const landing = (name, fn) => test(name, hasLanding ? {} : { todo: "waiting for Person C" }, () => fn(read("public/index.html")));
+const landing = (name, fn) => test(name, hasLanding ? {} : { todo: "waiting for Person C" }, () => { if (hasLanding) fn(read("public/index.html")); });
 
 landing("landing has a viewport meta, the icon link, the logo img, name, tagline, example card, Open the app link and the exact privacy line", (html) => {
   assert.match(html, /<meta[^>]+name="viewport"/);

@@ -64,6 +64,7 @@ test("interpret throwing gives meaning_unavailable with the transcript and no se
     sentences: [],
     passes: 1,
     cached: false,
+    hint: null,
   });
 });
 
@@ -96,4 +97,29 @@ test("defaults to the real interpret when no deps are given (failing safe offlin
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test("context is limited to the last 3 entries of at most 1000 characters", async () => {
+  const { deps: d, calls } = deps();
+  await handleText(post({ text: "hi", context: ["a", "b", "c", "d", "z".repeat(5000)] }), {}, d);
+  assert.equal(calls[0].args.context.length, 3);
+  assert.equal(calls[0].args.context[2].length, 1000);
+  assert.equal(calls[0].args.context[0], "c");
+});
+
+test("the result carries hint: null (ChunkResult contract), also for meaning_unavailable", async () => {
+  const ok = await (await handleText(post({ text: "hi" }), {}, deps().deps)).json();
+  assert.equal(ok.hint, null);
+  const bad = await (await handleText(post({ text: "hi" }), {}, deps(() => { throw new Error("x"); }).deps)).json();
+  assert.equal(bad.hint, null);
+});
+
+test("a sessionId that is not header-safe gets a UUID instead", async () => {
+  const { deps: d, calls } = deps();
+  await handleText(post({ text: "hi", sessionId: "bad\r\nid" }), {}, d);
+  await handleText(post({ text: "hi", sessionId: "caf\u00e9" }), {}, d);
+  await handleText(post({ text: "hi", sessionId: "ok-id_1" }), {}, d);
+  assert.match(calls[0].args.sessionId, /^[0-9a-f-]{36}$/);
+  assert.match(calls[1].args.sessionId, /^[0-9a-f-]{36}$/);
+  assert.equal(calls[2].args.sessionId, "ok-id_1");
 });

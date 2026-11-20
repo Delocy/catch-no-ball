@@ -2,7 +2,7 @@
 // lives in a tested module: cards.js, queue.js, api.js.
 import { createApi } from "./api.js";
 import { createClipQueue } from "./queue.js";
-import { toCardModels, cardHtml, shouldAutoScroll } from "./cards.js";
+import { cardHtml, renderResult, shouldAutoScroll } from "./cards.js";
 
 const api = createApi({ fetchImpl: (...a) => fetch(...a) });
 const sessionId = crypto.randomUUID();
@@ -28,12 +28,9 @@ function insert(html, replaceId) {
 const queue = createClipQueue({
   send: (item) => api.sendText({ text: item.text, sessionId, context: [] }),
   onResult(item, result, error) {
-    const models = error
-      ? toCardModels({ status: "meaning_unavailable", transcript: item.text })
-      : toCardModels(result);
-    const html = models.map((m, i) => cardHtml(m, i === 0 ? item.cardId : `${item.cardId}-${i}`)).join("");
+    const { html, retryable } = renderResult(item, result, error);
     insert(html, item.cardId);
-    for (const m of models) if (m.kind === "unavailable") texts.set(item.cardId, item.text);
+    if (!retryable) texts.delete(item.cardId);
   },
 });
 
@@ -53,8 +50,8 @@ form.addEventListener("submit", (e) => {
 });
 
 cardsEl.addEventListener("click", (e) => {
-  const btn = e.target.closest(".retry");
-  if (!btn) return;
-  const id = btn.dataset.cardId;
+  const card = e.target.closest(".card.unavailable");
+  if (!card) return;
+  const id = card.dataset.cardId;
   if (texts.has(id)) submit(texts.get(id), id);
 });

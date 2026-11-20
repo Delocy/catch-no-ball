@@ -16,8 +16,9 @@ export function createClipQueue({ send, onResult }) {
       }
       try {
         onResult(item, result, error);
-      } catch {
-        // a UI bug must not stop the queue
+      } catch (e) {
+        // a UI bug must not stop the queue, but it must not be silent either
+        console.error(`onResult failed: ${e && e.message}`);
       }
       items.shift();
     }

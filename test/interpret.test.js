@@ -197,3 +197,9 @@ test("an empty or missing content (reasoning model ran out of tokens) throws Int
     assert.equal("max_tokens" in f.seen[0].body, false);
   }
 });
+
+test("a missing OPENCODE_API_KEY throws InterpretError before any request", async () => {
+  const f = fakeFetch(() => chatResponse(ok()));
+  await assert.rejects(interpret({ transcript: "t", context: [], sessionId: "s" }, {}, f), /OPENCODE_API_KEY is not set/);
+  assert.equal(f.seen.length, 0);
+});

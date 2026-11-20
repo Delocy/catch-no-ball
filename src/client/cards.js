@@ -85,3 +85,15 @@ export function cardHtml(model, id) {
 export function shouldAutoScroll({ scrollTop, clientHeight, scrollHeight }, slackPx = 48) {
   return scrollHeight - scrollTop - clientHeight <= slackPx;
 }
+
+// What to show when a queued item finishes. An API error becomes the "meaning unavailable"
+// card for the typed text. Ids: the first card replaces the pending card, others are id-1, id-2.
+export function renderResult(item, result, error) {
+  const models = error
+    ? toCardModels({ status: "meaning_unavailable", transcript: item.text })
+    : toCardModels(result);
+  return {
+    html: models.map((m, i) => cardHtml(m, i === 0 ? item.cardId : `${item.cardId}-${i}`)).join(""),
+    retryable: models.some((m) => m.kind === "unavailable"),
+  };
+}

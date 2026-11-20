@@ -30,7 +30,8 @@ export function createRouter(assets, handlers) {
         if (!handler) return json({ error: "not_found" }, 404);
         try {
           return noStore(await handler(request, env));
-        } catch {
+        } catch (e) {
+          console.error(`handler failed: ${request.method} ${pathname}: ${e && e.message}`);
           return json({ error: "server" }, 500);
         }
       }

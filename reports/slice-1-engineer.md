@@ -28,3 +28,12 @@ Smoke exposed two bugs that unit tests missed (fixed): (1) wrangler's Text rule 
 - `handleText` logs `interpret failed: <message>` with `console.error` (no secrets) to make failures diagnosable.
 - `app.js` untested by design; it only wires cards.js/queue.js/api.js. Not checked in a real browser.
 - Landing tests are `todo` until C adds `public/index.html` (C's file may be named `landing.html` currently).
+
+## Review fixes (response to reports/slice-1-reviewer.md)
+Test-first: new tests added, `npm test` showed 8 failing, then the fixes below.
+- **I1** `src/router.js` logs `handler failed: <METHOD> <path>: <message>` (no body, headers or secrets); `src/client/queue.js` logs `onResult failed: <message>`. Tests spy on `console.error`.
+- **I2** New `renderResult(item, result, error) -> { html, retryable }` in `src/client/cards.js` (error to unavailable card, ids `c`, `c-1`, `c-2`, retryable flag), tested. `app.js` just inserts the html and deletes the retry text when not retryable (also fixes Minor 13).
+- **I3** `cleanContext` in `src/prompt.js` (last `CONTEXT_KEEP = 3`, each capped at `MAX_CONTEXT_CHARS = 1000`, strings only), used by `handleText`, `interpret` and `buildMessages` (also Minor 6). Tests with a 500,000-char entry.
+- Minors fixed: 1 (`hint: null` on every text result), 2 (sessionId must match `/^[A-Za-z0-9_-]{1,100}$/`, else a UUID), 3 (missing `OPENCODE_API_KEY` throws `InterpretError` before any fetch), 4 (tapping anywhere on an unavailable card retries), 5 (config test pins the exact Text-rule globs; IMPL.md untouched as instructed), 10a (todo landing tests no longer run their bodies, so no ENOENT noise).
+- Deferred: 7 (pending label wording, revisit with slice 3's real label), 8 (unsure shows one chip: slice 2), 9 (plain span truncation: needs a design choice for slice 2's sentence handling), 10b (C renames `landing.html`: C's file), 11 (body size check) and 12 (security headers/CSP: the CSP needs checking against the inline-free app page, better with slice 5 deploy), 14 (deps factory: router fix is locked by a test; revisit in slice 3).
+- Results: `npm test` 109 pass, 0 fail, 4 todo. `npm run coverage` exit 0, all files 99.17% lines, 98.51% branches, 98.08% functions.
