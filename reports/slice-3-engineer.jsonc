@@ -1,0 +1,14 @@
+// Status log for slice-3-engineer
+[
+  { "time": "2026-11-20T15:20:00+08:00", "step": "read plan (IMPL rev 5 sections 1, 2, slice 3) and step 0 report", "status": "done", "note": "Building slice 3 test-first on a/slice-3-listen; step 0 not re-run" },
+  { "time": "2026-11-20T15:27:00+08:00", "step": "fixtures", "status": "done", "note": "meralion-transcription.json and meralion-error.json by hand from step 0; r3-singlish.wav and r3-plain.wav from macOS say + afconvert" },
+  { "time": "2026-11-20T15:30:00+08:00", "step": "tests first (RED)", "status": "done", "note": "135 tests, 23 failing for the right reason (missing modules/exports, hint still present, no bindings); commit 83a6c99" },
+  { "time": "2026-11-20T15:33:00+08:00", "step": "server (GREEN)", "status": "done", "note": "audio, meralion, guard, hear, pipeline handleChunk/handleBudget, index export, wrangler DO+KV; commit 25e65c5" },
+  { "time": "2026-11-20T15:34:00+08:00", "step": "client modules (GREEN)", "status": "done", "note": "wav, clipper, mic, worklet, api.sendClip/budget, cards uncaught/fixItem, session contextAfter/withContext; 269 pass; commit 291ff80" },
+  { "time": "2026-11-20T15:35:00+08:00", "step": "app.js glue + clipToSend (RED then GREEN)", "status": "done", "note": "commit f69a036" },
+  { "time": "2026-11-20T15:36:00+08:00", "step": "dev server restart", "status": "done", "note": "wrangler reloaded wrangler.toml but its rebuild ran before the new client files existed and stayed broken; stopped and restarted the preview server on 8787" },
+  { "time": "2026-11-20T15:38:00+08:00", "step": "live smoke", "status": "done", "note": "4 clip requests to /api/chunk, 3 MERaLiON requests, 1 cache hit; 6.21 s audio, 1029 tokens; reject paths free" },
+  { "time": "2026-11-20T15:40:00+08:00", "step": "browser check", "status": "done", "note": "/app loads with Listen; mic blocked in the pane shows COPY.micBlocked and focuses the text box" },
+  { "time": "2026-11-20T15:42:00+08:00", "step": "coverage", "status": "done", "note": "275 tests, 271 pass, 0 fail, 4 todo; all files 97.07 / 98.19 / 95.58; exit 0" },
+  { "time": "2026-11-20T15:45:00+08:00", "step": "reports", "status": "done", "note": "slice-3-engineer.md written" }
+]
