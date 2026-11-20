@@ -31,7 +31,7 @@ export function buildMessages({ transcript, context = [], retry = false } = {}) 
   lines.push(`Transcript: ${transcript}`);
   let system = SYSTEM;
   if (retry) {
-    system += "\n- This is a second pass: you were unsure before. Use the earlier sentences to settle it if you can, and otherwise give exactly 2 readings.";
+    system += "\n- Reconsider with the extra context. If still unsure, set confident false and give exactly two readings.";
   }
   return [
     { role: "system", content: system },

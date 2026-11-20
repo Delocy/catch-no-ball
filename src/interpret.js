@@ -118,9 +118,8 @@ export function enforceVerbatim(transcript, sentences) {
   return out;
 }
 
-export async function interpret({ transcript, context, sessionId }, env, fetchImpl = fetch) {
-  if (!env || !env.OPENCODE_API_KEY) throw new InterpretError("OPENCODE_API_KEY is not set");
-  const messages = buildMessages({ transcript, context: cleanContext(context).slice(-1) });
+async function callOpenCode({ transcript, context, retry, sessionId }, env, fetchImpl, requireReadings) {
+  const messages = buildMessages({ transcript, context, retry });
   let res;
   try {
     res = await fetchImpl(`${OPENCODE_BASE_URL}/chat/completions`, {
@@ -145,6 +144,17 @@ export async function interpret({ transcript, context, sessionId }, env, fetchIm
   } catch {
     throw new InterpretError("reply body is not JSON");
   }
-  const { sentences } = parseInterpretation(content);
-  return { sentences: enforceVerbatim(transcript, sentences), passes: 1 };
+  const { sentences } = parseInterpretation(content, { requireReadings });
+  return enforceVerbatim(transcript, sentences);
+}
+
+// Pass 1 sees the last sentence. If a Singlish sentence is unsure, pass 2 sees the last 3 and
+// must give exactly 2 readings. Plain English never triggers a retry. Any retry failure throws.
+export async function interpret({ transcript, context, sessionId }, env, fetchImpl = fetch) {
+  if (!env || !env.OPENCODE_API_KEY) throw new InterpretError("OPENCODE_API_KEY is not set");
+  const ctx = cleanContext(context);
+  const first = await callOpenCode({ transcript, context: ctx.slice(-1), retry: false, sessionId }, env, fetchImpl, false);
+  if (!first.some((s) => s.hasSinglish && !s.confident)) return { sentences: first, passes: 1 };
+  const second = await callOpenCode({ transcript, context: ctx.slice(-3), retry: true, sessionId }, env, fetchImpl, true);
+  return { sentences: second, passes: 2 };
 }

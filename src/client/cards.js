@@ -40,11 +40,20 @@ export function toCardModels(result) {
   if (!result) return [];
   if (result.status === "meaning_unavailable") return [{ kind: "unavailable", transcript: result.transcript }];
   if (result.status !== "ok" || !Array.isArray(result.sentences)) return [];
-  return result.sentences.map((s) =>
-    s.hasSinglish
-      ? { kind: "singlish", said: s.said, termsHtml: markTerms(s.said, s.terms), meaning: s.meaning, tone: s.tone }
-      : { kind: "plain", text: s.said },
-  );
+  return result.sentences.map(sentenceModel);
+}
+
+// An unsure Singlish sentence is never shown as one guess: it shows both readings, or (if the
+// server sent anything else) the "meaning unavailable" card.
+function sentenceModel(s) {
+  if (!s.hasSinglish) return { kind: "plain", text: s.said };
+  const termsHtml = markTerms(s.said, s.terms);
+  if (s.confident === false) {
+    const r = Array.isArray(s.readings) ? s.readings : [];
+    if (r.length !== 2) return { kind: "unavailable", transcript: s.said };
+    return { kind: "unsure", said: s.said, termsHtml, readings: r.map(({ meaning, tone }) => ({ meaning, tone })) };
+  }
+  return { kind: "singlish", said: s.said, termsHtml, meaning: s.meaning, tone: s.tone };
 }
 
 const toneClass = (tone) => String(tone).toLowerCase().replace(/[^a-z]/g, "");
@@ -61,6 +70,20 @@ export function cardHtml(model, id) {
         `<span class="chip tone-${toneClass(model.tone)}">${escapeHtml(model.tone)}</span>` +
         `</article>`
       );
+    case "unsure": {
+      const reading = ({ meaning, tone }) =>
+        `<p class="reading"><span class="meaning">${escapeHtml(meaning)}</span> ` +
+        `<span class="chip tone-${toneClass(tone)}">${escapeHtml(tone)}</span></p>`;
+      return (
+        `<article class="card unsure" id="${cid}">` +
+        `<p class="said">${model.termsHtml}</p>` +
+        `<p class="could-mean">${escapeHtml(COPY.couldMean)}</p>` +
+        reading(model.readings[0]) +
+        `<p class="or">${escapeHtml(COPY.or)}</p>` +
+        reading(model.readings[1]) +
+        `</article>`
+      );
+    }
     case "plain":
       return `<article class="card plain" id="${cid}"><p class="said">${escapeHtml(model.text)}</p></article>`;
     case "unavailable":
