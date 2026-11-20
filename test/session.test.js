@@ -23,3 +23,11 @@ test("nextContext honours a custom keep and does not mutate its input", () => {
   assert.deepEqual(nextContext(prev, [s("c")], 2), ["b", "c"]);
   assert.deepEqual(prev, ["a", "b"]);
 });
+
+import { CONTEXT_KEEP } from "../src/client/session.js";
+import { CONTEXT_KEEP as SHARED_KEEP } from "../src/prompt.js";
+
+test("session CONTEXT_KEEP equals the shared constant and is the default keep", () => {
+  assert.equal(CONTEXT_KEEP, SHARED_KEEP);
+  assert.equal(nextContext(["a", "b", "c"], [s("d")]).length, CONTEXT_KEEP);
+});

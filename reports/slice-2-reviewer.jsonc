@@ -1,0 +1,8 @@
+// Status log for slice-2-reviewer
+[
+  { "time": "2026-11-20T18:00:00+08:00", "step": "read spec, PRD US-6, anti-goals, engineer report", "status": "done", "note": "IMPL slice 2 + section 1 contracts/constants/copy" },
+  { "time": "2026-11-20T18:10:00+08:00", "step": "read diff and check risks in interpret.js, pipeline.js, cards.js, queue.js, app.js", "status": "done", "note": "retry flow matches spec; passes count wrong on failed retry; readings truncated to 2" },
+  { "time": "2026-11-20T18:20:00+08:00", "step": "npm test", "status": "done", "note": "exit 0; 133 tests, 129 pass, 0 fail, 4 todo" },
+  { "time": "2026-11-20T18:22:00+08:00", "step": "npm run coverage", "status": "done", "note": "exit 0; 99.62 lines / 98.67 branches / 98.28 funcs" },
+  { "time": "2026-11-20T18:35:00+08:00", "step": "write review", "status": "done", "note": "Approve with one Important fix (passes after failed retry); 7 Minor" }
+]

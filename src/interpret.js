@@ -6,9 +6,11 @@ export const USER_AGENT = "CatchNoBall/1.0";
 export const INTERPRET_TIMEOUT_MS = 20000;
 
 export class InterpretError extends Error {
-  constructor(message) {
+  // passes: OpenCode Go calls made before failing, when more than the default 1.
+  constructor(message, { passes } = {}) {
     super(message);
     this.name = "InterpretError";
+    if (passes !== undefined) this.passes = passes;
   }
 }
 
@@ -30,7 +32,7 @@ function parseSentence(s, requireReadings) {
 
   const rawReadings = s.readings ?? [];
   if (!Array.isArray(rawReadings)) throw new InterpretError("readings must be an array");
-  const readings = rawReadings.slice(0, 2).map((r) => {
+  const readings = rawReadings.map((r) => {
     if (!r || !isStr(r.meaning) || !TONES.includes(r.tone)) throw new InterpretError("bad reading");
     return { meaning: r.meaning, tone: r.tone };
   });
@@ -43,8 +45,10 @@ function parseSentence(s, requireReadings) {
     return { term: t.term, gloss: t.gloss, known: t.known ?? true };
   });
 
-  if (requireReadings && !s.confident && readings.length !== 2) {
-    throw new InterpretError("an unsure sentence needs exactly 2 readings");
+  if (requireReadings && !s.confident) {
+    if (readings.length !== 2) throw new InterpretError("an unsure sentence needs exactly 2 readings");
+    const key = (r) => `${r.tone}|${r.meaning.trim().toLowerCase()}`;
+    if (key(readings[0]) === key(readings[1])) throw new InterpretError("the 2 readings must differ");
   }
 
   return {
@@ -53,7 +57,7 @@ function parseSentence(s, requireReadings) {
     meaning: s.meaning,
     tone: s.tone,
     confident: s.confident,
-    readings: s.confident ? [] : readings,
+    readings: s.confident ? [] : readings.slice(0, 2),
     terms,
   };
 }
@@ -155,6 +159,11 @@ export async function interpret({ transcript, context, sessionId }, env, fetchIm
   const ctx = cleanContext(context);
   const first = await callOpenCode({ transcript, context: ctx.slice(-1), retry: false, sessionId }, env, fetchImpl, false);
   if (!first.some((s) => s.hasSinglish && !s.confident)) return { sentences: first, passes: 1 };
-  const second = await callOpenCode({ transcript, context: ctx.slice(-3), retry: true, sessionId }, env, fetchImpl, true);
-  return { sentences: second, passes: 2 };
+  try {
+    const second = await callOpenCode({ transcript, context: ctx.slice(-3), retry: true, sessionId }, env, fetchImpl, true);
+    return { sentences: second, passes: 2 };
+  } catch (e) {
+    if (e instanceof InterpretError) e.passes = 2;
+    throw e;
+  }
 }

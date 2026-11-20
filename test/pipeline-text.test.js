@@ -136,3 +136,14 @@ test("passes is passed through", async () => {
   const body = await (await handleText(post({ text: "can meh", sessionId: "s" }), {}, d)).json();
   assert.equal(body.passes, 2);
 });
+
+test("a failed retry reports passes 2; a plain failure reports passes 1", async () => {
+  const { InterpretError } = await import("../src/interpret.js");
+  const retryFail = deps(() => { throw new InterpretError("retry", { passes: 2 }); });
+  const a = await (await handleText(post({ text: "can meh", sessionId: "s" }), {}, retryFail.deps)).json();
+  assert.equal(a.status, "meaning_unavailable");
+  assert.equal(a.passes, 2);
+  const plainFail = deps(() => { throw new Error("x"); });
+  const b = await (await handleText(post({ text: "can meh", sessionId: "s" }), {}, plainFail.deps)).json();
+  assert.equal(b.passes, 1);
+});

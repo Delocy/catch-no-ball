@@ -24,7 +24,7 @@ Rules:
 - "tone" must be exactly one of: ${TONES.join(", ")}.
 - "terms" lists the Singlish words and particles in the sentence (lah, lor, meh, one, confirm and so on), each with a short gloss. Set known: false for a term you do not recognise.
 - If particles seem missing, infer tone from wording and context. Never guess confidently. Use confident:false.
-- When confident is true, "readings" is []. When confident is false, give exactly 2 plausible readings, each with its own meaning and tone.`;
+- When confident is true, "readings" is []. When confident is false, give exactly 2 plausible readings that differ from each other, each with its own meaning and tone; use two different tones when the tones could differ.`;
 
 export function buildMessages({ transcript, context = [], retry = false } = {}) {
   const lines = cleanContext(context).map((c) => `Earlier: ${c}`);

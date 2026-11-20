@@ -265,3 +265,69 @@ test("rejects a reading whose tone is outside TONES", async () => {
   const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : bad));
   await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
 });
+
+// ---- slice 2 review fixes ----
+test("a failed retry throws an InterpretError carrying passes 2; a pass-1 failure carries none", async () => {
+  let n = 0;
+  const f = fakeFetch(() => (n++ === 0 ? chatResponse(unsure()) : new Response("x", { status: 500 })));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), (e) => e instanceof InterpretError && e.passes === 2);
+  await assert.rejects(interpret({ transcript: "t", context: [], sessionId: "s" }, KEY, fakeFetch(() => new Response("x", { status: 500 }))), (e) => e.passes === undefined);
+});
+
+test("three readings on the retry fail the exactly-2 check", async () => {
+  let n = 0;
+  const three = unsure({ readings: [...R2, { meaning: "Third", tone: "joking" }] });
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : three));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+});
+
+test("two exact-duplicate readings are not two readings", async () => {
+  const dup = unsure({ readings: [R2[0], { meaning: "  IS IT really okay? ", tone: "doubtful" }] });
+  assert.throws(() => parseInterpretation(dup, { requireReadings: true }), InterpretError);
+  let n = 0;
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : dup));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+});
+
+test("same meaning with a different tone, or same tone with a different meaning, is valid", () => {
+  const a = unsure({ readings: [R2[0], { meaning: R2[0].meaning, tone: "neutral" }] });
+  const b = unsure({ readings: [R2[0], { meaning: "Other", tone: "doubtful" }] });
+  assert.doesNotThrow(() => parseInterpretation(a, { requireReadings: true }));
+  assert.doesNotThrow(() => parseInterpretation(b, { requireReadings: true }));
+});
+
+test("a retry timeout and a non-JSON retry reply both throw", async () => {
+  for (const second of [() => { throw new DOMException("timed out", "TimeoutError"); }, () => chatResponse("sorry")]) {
+    let n = 0;
+    const f = fakeFetch(() => (n++ === 0 ? chatResponse(unsure()) : second()));
+    await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+  }
+});
+
+test("pass 1 unsure with 0 readings still retries; call 1 has no Reconsider line", async () => {
+  let n = 0;
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure({ readings: [] }) : unsure()));
+  const r = await interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f);
+  assert.equal(f.seen.length, 2);
+  assert.doesNotMatch(f.seen[0].body.messages[0].content, /Reconsider/);
+  assert.equal(r.passes, 2);
+});
+
+test("a mixed clip with one unsure sentence makes exactly 2 calls and keeps the plain sentence verbatim", async () => {
+  const plain = sentence({ said: "Let us begin.", hasSinglish: false, meaning: "", tone: "neutral", terms: [] });
+  const body = (u) => JSON.stringify({ sentences: [plain, JSON.parse(u)] });
+  const f = fakeFetch(() => chatResponse(body(unsure())));
+  const r = await interpret({ transcript: "Let us begin. can meh", context: [], sessionId: "s" }, KEY, f);
+  assert.equal(f.seen.length, 2);
+  assert.equal(r.sentences[0].said, "Let us begin.");
+  assert.equal(r.sentences[0].hasSinglish, false);
+});
+
+test("known limit: if the retry rewords a plain sentence, it is dropped (never shown reworded)", async () => {
+  const plain = (said) => sentence({ said, hasSinglish: false, meaning: "", tone: "neutral", terms: [] });
+  let n = 0;
+  const f = fakeFetch(() => chatResponse(JSON.stringify({ sentences: [plain(n++ === 0 ? "Let us begin." : "Let's start."), JSON.parse(unsure())] })));
+  const r = await interpret({ transcript: "Let us begin. can meh", context: [], sessionId: "s" }, KEY, f);
+  assert.equal(r.sentences.length, 1);
+  assert.equal(r.sentences[0].said, "can meh");
+});

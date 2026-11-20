@@ -70,3 +70,9 @@ test("the first-pass prompt does not ask to reconsider", () => {
   const [system] = buildMessages({ transcript: "can meh" });
   assert.ok(!system.content.includes("Reconsider"));
 });
+
+test("the base readings rule asks for two readings that differ, with different tones where they could", () => {
+  const [system] = buildMessages({ transcript: "can meh" });
+  assert.match(system.content, /exactly 2 plausible readings that differ from each other/);
+  assert.match(system.content, /two different tones when the tones could differ/);
+});
