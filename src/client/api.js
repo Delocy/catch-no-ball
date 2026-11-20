@@ -9,14 +9,10 @@ export class ApiError extends Error {
 
 // The client holds no code or key and sends no auth header.
 export function createApi({ fetchImpl, base = "" }) {
-  async function post(path, payload) {
+  async function call(path, init) {
     let res;
     try {
-      res = await fetchImpl(base + path, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      res = await fetchImpl(base + path, init);
     } catch (e) {
       throw new ApiError(`network error: ${e.message}`, "network");
     }
@@ -31,7 +27,19 @@ export function createApi({ fetchImpl, base = "" }) {
     }
   }
 
+  const postJson = (path, payload) =>
+    call(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+
   return {
-    sendText: ({ text, sessionId, context }) => post("/api/text", { text, sessionId, context }),
+    sendText: ({ text, sessionId, context }) => postJson("/api/text", { text, sessionId, context }),
+    // Multipart: the browser sets the content-type with its boundary.
+    sendClip({ wav, sessionId, context }) {
+      const form = new FormData();
+      form.append("audio", new Blob([wav], { type: "audio/wav" }), "clip.wav");
+      form.append("sessionId", sessionId);
+      form.append("context", JSON.stringify(context));
+      return call("/api/chunk", { method: "POST", body: form });
+    },
+    budget: () => call("/api/budget", { method: "GET" }),
   };
 }

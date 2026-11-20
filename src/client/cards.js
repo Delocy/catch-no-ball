@@ -39,6 +39,7 @@ export function markTerms(said, terms) {
 export function toCardModels(result) {
   if (!result) return [];
   if (result.status === "meaning_unavailable") return [{ kind: "unavailable", transcript: result.transcript }];
+  if (result.status === "uncaught") return [{ kind: "uncaught" }];
   if (result.status !== "ok" || !Array.isArray(result.sentences)) return [];
   return result.sentences.map(sentenceModel);
 }
@@ -89,14 +90,24 @@ export function cardHtml(model, id) {
     case "unavailable":
       return (
         `<article class="card unavailable" id="${cid}" data-card-id="${cid}">` +
-        `<p class="said">${escapeHtml(model.transcript)}</p>` +
+        (model.transcript ? `<p class="said">${escapeHtml(model.transcript)}</p>` : "") +
         `<button type="button" class="retry" data-card-id="${cid}">${escapeHtml(COPY.unavailable)}</button>` +
+        `</article>`
+      );
+    case "uncaught":
+      return (
+        `<article class="card uncaught" id="${cid}">` +
+        `<p class="said">${escapeHtml(COPY.uncaught)}</p>` +
+        `<form class="fix" data-card-id="${cid}" autocomplete="off">` +
+        `<input type="text" name="text" maxlength="1000" placeholder="Type what you heard" aria-label="Type what you heard" enterkeyhint="send">` +
+        `<button type="submit">Send</button>` +
+        `</form>` +
         `</article>`
       );
     case "pending":
       return (
         `<article class="card pending" id="${cid}">` +
-        `<p class="said">${escapeHtml(model.text)}</p>` +
+        (model.text ? `<p class="said">${escapeHtml(model.text)}</p>` : "") +
         `<p class="status">${escapeHtml(COPY.translating)}…</p>` +
         `</article>`
       );
@@ -110,13 +121,19 @@ export function shouldAutoScroll({ scrollTop, clientHeight, scrollHeight }, slac
 }
 
 // What to show when a queued item finishes. An API error becomes the "meaning unavailable"
-// card for the typed text. Ids: the first card replaces the pending card, others are id-1, id-2.
+// card for the typed text (a clip has no words yet, so its card shows only the retry). Ids: the first card replaces the pending card, others are id-1, id-2.
 export function renderResult(item, result, error) {
   const models = error
-    ? toCardModels({ status: "meaning_unavailable", transcript: item.text })
+    ? toCardModels({ status: "meaning_unavailable", transcript: item.text ?? "" })
     : toCardModels(result);
   return {
     html: models.map((m, i) => cardHtml(m, i === 0 ? item.cardId : `${item.cardId}-${i}`)).join(""),
     retryable: models.some((m) => m.kind === "unavailable"),
   };
+}
+
+// A typed fix for a "Couldn't catch that" card: a text item that replaces that card.
+export function fixItem(cardId, value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? { kind: "text", text, replaces: cardId } : null;
 }

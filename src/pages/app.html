@@ -12,7 +12,13 @@
   <header class="top">
     <img src="/logo-mark.svg" alt="" width="28" height="28">
     <h1>Catch No Ball</h1>
+    <button type="button" id="listen" class="listen" aria-pressed="false">Listen</button>
   </header>
+  <div id="banner" class="banner" role="status" hidden>
+    <p class="translating"><span class="dot" aria-hidden="true"></span>Translating</p>
+    <p class="tell">Let the table know you're using a translator</p>
+  </div>
+  <p id="mic-help" class="mic-help" role="alert" hidden></p>
   <main id="cards" aria-live="polite"></main>
   <form id="typed" class="typed" autocomplete="off">
     <input id="text" type="text" name="text" placeholder="Type what you heard" maxlength="1000" aria-label="Type what you heard" enterkeyhint="send">
