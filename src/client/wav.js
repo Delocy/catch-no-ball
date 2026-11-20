@@ -62,3 +62,13 @@ export function rms(samples) {
 export function isSilent(samples, threshold = SILENCE_RMS) {
   return rms(samples) < threshold;
 }
+
+// Same as the Worker's MIN_CLIP_SECONDS: anything shorter is never sent.
+export const MIN_SEND_SECONDS = 0.5;
+
+// A finished clip (full, or the partial one at Stop) -> the WAV to send, or null when it is
+// silent or too short. Silence never leaves the phone.
+export function clipToSend(samples, inputRate) {
+  if (samples.length < MIN_SEND_SECONDS * inputRate || isSilent(samples)) return null;
+  return encodeWav(resampleTo16k(samples, inputRate));
+}

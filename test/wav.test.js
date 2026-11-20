@@ -86,3 +86,20 @@ test("round trip: wavInfo(encodeWav(1 s)) reads 1 s, 16000 Hz, mono", () => {
   assert.equal(info.channels, 1);
   assert.equal(info.bitsPerSample, 16);
 });
+
+import { clipToSend, MIN_SEND_SECONDS } from "../src/client/wav.js";
+
+test("clipToSend: a loud clip of 0.5 s or more becomes a 16 kHz WAV", () => {
+  assert.equal(MIN_SEND_SECONDS, 0.5);
+  const wav = clipToSend(sine(24000, 48000), 48000); // 0.5 s
+  assert.ok(wav instanceof Uint8Array);
+  const info = wavInfo(wav);
+  assert.equal(info.sampleRate, 16000);
+  assert.equal(info.seconds, 0.5);
+});
+
+test("clipToSend: silence, or under 0.5 s, is not sent", () => {
+  assert.equal(clipToSend(new Float32Array(48000), 48000), null);
+  assert.equal(clipToSend(sine(23999, 48000), 48000), null);
+  assert.equal(clipToSend(new Float32Array(0), 48000), null);
+});
