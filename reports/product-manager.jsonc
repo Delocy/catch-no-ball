@@ -6,4 +6,5 @@
   { "time": "2026-11-20T13:57:00+08:00", "step": "write PRD.md", "status": "started", "note": "Writing PRD.md at repo root" },
   { "time": "2026-11-20T14:10:00+08:00", "step": "write PRD.md", "status": "done", "note": "PRD.md written: 15 stories (13 must, 2 should), metrics M1-M5, E1/E2, 8 risks (R1-R3 unchecked), 4 open questions." },
   { "time": "2026-11-20T14:12:00+08:00", "step": "final report", "status": "done", "note": "reports/product-manager.md written. docs/PRD.md left in place for the controller to remove." }
+  ,{ "time": "2026-11-20T15:30:00+08:00", "step": "revision 1: model split (option B)", "status": "done", "note": "PRD.md updated: MERaLiON gives transcript + its own meaning/tone reading, OpenCode Go validates and writes the final card, Whisper fallback only. Budget redone: 15 s clips hold only with one combined MERaLiON call; two calls need ~25 s clips. Added R9-R11, B2a, E2 tone comparison, Changes note." }
 ]

@@ -1,0 +1,67 @@
+# engineering-manager: final report
+
+## What I produced
+- `IMPL.md` at the repo root: the 1-week implementation plan, cut into 9 vertical slices from `PRD.md`. It replaces `docs/superpowers/plans/2026-11-20-catch-no-ball-v1.md` (used as input only; not deleted, that's the controller's call).
+- Contents: header (goal, architecture, stack, final layout, exact npm scripts, coverage exclusions, config/secrets per slice, pitfalls, shared contracts `Sentence` / `ChunkResult` / endpoints, constants, exact UI copy), the per-slice process (engineer → fresh reviewer → fix → user demo → commit), day-0/1 user checks with what each blocks, a slice overview, the 9 slices, risks R1–R14, assumptions, and 3 questions for the user.
+
+## Slices
+1. Type a line, get a card (US-2, US-4 typed, US-5, US-8 typed box, US-11). Needs only the OpenCode key: demoable on day 1.
+2. Honest when unsure: retry with context, two readings (US-6, B5).
+3. Listen and get cards, Whisper only (US-3, US-4, US-7, US-8 mic blocked).
+4. Landing page and deploy to workers.dev; phone checks (US-1).
+5. MERaLiON first, Whisper backup, KV cache (US-10, B2, B6). Blocked by R3.
+6. Rate guard, monthly budget, demo key, `/api/budget` (US-12, B3, B3a).
+7. Evals: score table, particle comparison, M3 timings, E1 cards page (US-13).
+8. Connection drops: banner, auto-resume, "Missed some speech" (US-9).
+9. Should, optional: term sheet and home-screen manifest (US-14, US-15).
+
+## Key decisions (marked "my call" in IMPL.md)
+- Coverage thresholds 81 (Node passes at exactly the threshold; PRD says over 80%). Verified the flags on Node v22.10.0 in a scratch project: a miss exits 1, and **never-imported files are not reported**, so `test/all-modules.test.js` imports every non-excluded module. Exclusions: `src/index.js`, `src/client/app.js`, `evals/run.js` only; `test/config.test.js` checks index.js wiring and the DO export/binding pairing.
+- M2 guard `enforceVerbatim`: a fully plain clip shows `transcript.trim()`; plain sentences in mixed clips show the exact transcript span or are dropped. Evals' plain check runs through the real card view code.
+- Retry failure → whole clip "Meaning unavailable, tap to retry". Empty transcript from a non-silent clip → "Couldn't catch that". Guard failure → Whisper (never unguarded MERaLiON). `FORCE_WHISPER` beats `x-asr`.
+- Cache key includes the recogniser (`asr:meralion:<sha>` / `asr:whisper:<sha>`) so eval comparisons aren't polluted.
+- Deploy moved early (slice 4) so every later slice is tried on a real phone over HTTPS. Deployed `FORCE_WHISPER` stays "true" until the guard exists (slice 6).
+- Added `GET /api/budget` so the presenter can check MERaLiON minutes left; demo key read from `?demo=` and removed from the address bar.
+
+## Unsure about
+- Workers AI Whisper input schema (base64 `audio`) and Worker CPU time for base64 of a ~480 KB clip (R9, measured in slice 4).
+- MERaLiON format until R3.
+- Whether 9 feedback rounds fit the week (R13); slices 5+6 may be merged.
+- Q3 (OpenCode Go key limits) is still open.
+
+## Revision 1 (user feedback: "the main model should be meralion though, i dont want to be using whisper, maybe only as a fall back")
+
+What changed in IMPL.md:
+- **MERaLiON is the recogniser from the first spoken card.** The new slice 3 (Listen, and MERaLiON transcribes) builds the client audio together with `callMeralion`, the Durable Object guard (5/min plus the 2700 s monthly normal budget), the KV transcript cache and `GET /api/budget`. Until slice 4 a guard refusal shows "Couldn't catch that" + text box. Whisper is never the default.
+- **R3 moved into slice 3 as step 0**, run by the engineer with the user's key from `.dev.vars`: a 3 s macOS `say` clip plus one wrong-key request (2 requests, about 3 s of audio). It saves fixtures and `reports/r3-meralion-format.md`. If MERaLiON doesn't answer, the engineer stops and the user decides.
+- **New slice 4 (Backup mode):** Whisper only as the automatic fallback when the guard refuses or MERaLiON fails, with the "Backup mode" label (US-10). The only explicit Whisper request is `x-asr: whisper` from the eval runner's particle comparison; the app never sends it.
+- **`FORCE_WHISPER` removed** (no switch makes Whisper the default; in an emergency the budget guard already falls back by itself).
+- **MERaLiON development practice** added to section 1: fakes only in unit tests (a test trap makes real fetches fail), typed text for prompt work, short clips (Stop sends the partial), cache for repeats, per-slice spend in engineer reports. Planned spend is about 15 of the 45 normal minutes.
+- **Renumbered:** 5 = landing + deploy (was 4), 6 = demo key and reserved 15 minutes (was the guard slice; the guard moved to 3), 7 evals, 8 connection drops, 9 Should, unchanged.
+- **Both phones** (iPhone Safari and Android Chrome) are named in the phone checks of slices 5, 6, 8, 9 and the release check. The phones question is removed.
+- Updated: config table, pitfalls 1–2, endpoint table (`/api/budget` in slice 3), day-0 table (D1 keys incl. MERaLiON; D1b login by day 2; R3 at slice 3), overview, risks R3/R7/R9/R10 and new R15 (local and deployed guards count separately against one MERaLiON hour) and R16 (MERaLiON slower or less available with no Whisper-first mode to hide it), assumptions.
+
+Unsure about: slice 3 is now the largest slice (client audio plus guard plus cache). It stays one feedback round because the first MERaLiON call must ship with its guard. Local Durable Objects and KV are assumed to run in `wrangler dev` without a Cloudflare login.
+
+## Revision 2 (option B and a 3-person team)
+
+What changed in IMPL.md:
+- **Option B.** MERaLiON hears each clip and returns the exact transcript plus its own reading, `Hint = { meaning, tone, confidence }`. OpenCode Go gets that hint with the context, checks it, and writes every card. Typed text still goes to OpenCode Go alone; slices 1–2 are unchanged except that `interpret()` and `buildMessages()` gain `hint = null` in slice 3. `ChunkResult.hint` carries the reading for evals and is never rendered (tested). The final tone must be in TONES even if MERaLiON says something else (tested). A hint never makes plain English Singlish (tested).
+- **Step 0 of slice 3** now checks which models are served (MERaLiON-3 10B?), the transcription shape, whether chat/completions accepts audio and its shape, tokens per clip, and the error shape (at most 8 requests, about 20 s of audio). It sets `MERALION_MODE`:
+  - `combined`: one call, 15 s clips. This is preferred, as in the PRD.
+  - `two_call`: transcription, then chat; 25 s clips.
+  - `transcript_only`: the option A fallback if audio chat isn't available; 15 s clips.
+- New modules: `src/meralion.js` (HTTP and `parseHearing`), `src/hear.js` (`hearClip`, which replaces `transcribe`), `src/whisper.js`.
+- **Guard** counts every MERaLiON request by kind (`combined`/`asr`/`hint`), adds audio seconds per request, and tracks requests and tokens (`recordTokens`). Limits are 2700/3600 s, 750/1000 requests and 75k/100k tokens. In `two_call` mode a reading call leaves one rate slot free for the next transcript. `/api/budget` shows all three counters.
+- **Dev practice and budget table** were redone. Planned spend is about 20 min of counted audio and under 250 requests. The eval gap is 13 s per MERaLiON call.
+- **Slice 4:** Whisper fallback gives `hint: null`, so cards come from the transcript alone, with "Backup mode". A skipped reading in `two_call` mode is not a fallback.
+- **Evals (slice 7)** add `hintTone` (MERaLiON's tone vs the reference), MERaLiON columns in the CSV, `validateReferences` and `--check` for Person B, and they consume B's clips and references.
+- **Team split section** added near the top:
+  - Person A owns all code and the shared files.
+  - Person B owns R1, R2, the clips, `evals/references.json` (exact schema given) and E1 (my call).
+  - Person C owns `src/pages/landing.html`, `src/pages/logo.svg`, `icon-180.png` (slice 9) and `docs/presentation/**`, with an exact contract enforced by `test/pages.test.js`.
+  - B and C work on branches and open PRs that A merges; A's approved slices go straight to main.
+  - Slice 5 consumes C's work and slice 7 consumes B's, with placeholders (or `todo` tests) if their work is late.
+- Privacy line updated to the PRD's new wording. Risks now use the PRD's R1–R11 numbers, plus IR-1…IR-9 for risks only this plan adds (IR-9 is teammates' work arriving late). New question for the user: what to do if only `two_call` works or MERaLiON-3 10B isn't served.
+
+Conflict to flag: PRD.md B2a still says "A setting forces Whisper during development". IMPL follows the user's revision-1 instruction (no Whisper in development or demos) and states this in its assumptions. The product manager should drop that sentence from the PRD.

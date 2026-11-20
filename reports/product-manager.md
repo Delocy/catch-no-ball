@@ -18,3 +18,15 @@
 - Timing of the phone-in-meeting test (Q4): if it runs after the build, switching to recap is late. I suggested day 1–2.
 - E1's with-cards score is flattered by hearing each clip twice, and 3–5 people prove little; the PRD says to report both.
 - The 15 s card-speed target and ~8 s clip length are guesses and labelled as such.
+
+## Revision 1 (2026-11-20): model split, option B
+
+**What changed in PRD.md:** a dated Changes note at the top; sections 1, 3 (E2), 4, 5 (US-10, US-11), 6 (A3, L1, B2, new B2a, B3, B3a, B4, B6, error table), 7 (speed, privacy, free-tier table plus a new budget table), 8 (approach diagram, day 2–3 row), 9 (R1, R3, new R9–R11, two assumptions). Everything else is unchanged.
+
+**Calls I made:**
+1. **Budget:** 15 s clips only hold with **one combined MERaLiON call** per clip (4 calls a minute). Two calls per clip at 15 s would be 8 a minute, over the limit of 5; they need ~25 s clips (~4.8 a minute) and may halve usable audio if each call counts the audio. So the first speech slice tries the one-call form first.
+2. **Tokens are the real unknown:** 100k a month over ~240 clips is about 400 tokens per clip. If audio counts as tokens, that may be the first limit hit. The budget counter now tracks requests, audio and tokens, each split 75% normal / 25% demo (my call, mirroring 45/15 min).
+3. **MERaLiON's reading never reaches the screen unchecked.** If OpenCode Go fails, the card shows the transcript and "Meaning unavailable, tap to retry", not MERaLiON's raw reading (it isn't safety-aligned).
+4. **E2 gets one cheap new score:** MERaLiON's tone vs the final card's tone, from the same run. This shows whether the split helps.
+
+**Unsure about:** whether MERaLiON counts audio per call or per clip, its token cost for audio, and whether audio chat exists at all (R9, R10). All are checked at the first speech slice.
