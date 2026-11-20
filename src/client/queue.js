@@ -11,6 +11,7 @@ export function createClipQueue({
   const items = [];
   let running = null;
   let inFlight = null;
+  let wake = null; // ends a pending gap early
 
   async function run() {
     while (items.length > 0) {
@@ -33,15 +34,25 @@ export function createClipQueue({
       inFlight = null;
       if (items.length > 0) {
         const gap = gapMs(items[0], item, result);
-        if (gap > 0) await sleep(gap);
+        if (gap > 0) {
+          await Promise.race([sleep(gap), new Promise((r) => { wake = r; })]);
+          wake = null;
+        }
       }
     }
     running = null;
   }
 
   return {
+    // A typed line goes ahead of upload clips that are still waiting (never the one in flight).
     push(item) {
-      items.push(item);
+      let at = items.length;
+      if (item.kind === "text") {
+        const first = items.findIndex((x) => x !== inFlight && x.uploadId);
+        if (first !== -1) at = first;
+      }
+      items.splice(at, 0, item);
+      if (at === 0 && wake) wake();
       if (!running) running = run();
     },
     // Removes and returns the waiting items that match; the one being sent is never dropped.
@@ -50,6 +61,7 @@ export function createClipQueue({
       for (let i = items.length - 1; i >= 0; i--) {
         if (items[i] !== inFlight && pred(items[i])) dropped.unshift(...items.splice(i, 1));
       }
+      if (dropped.length && wake) wake();
       return dropped;
     },
     size: () => items.length,
