@@ -189,3 +189,11 @@ test("a malformed reply (non-JSON body, no choices, bad content) throws Interpre
     await assert.rejects(interpret({ transcript: "t", context: [], sessionId: "s" }, { OPENCODE_API_KEY: "k" }, fakeFetch(c)), InterpretError);
   }
 });
+
+test("an empty or missing content (reasoning model ran out of tokens) throws InterpretError and no max_tokens is sent", async () => {
+  for (const content of ["", "   ", null]) {
+    const f = fakeFetch(() => chatResponse(content));
+    await assert.rejects(interpret({ transcript: "t", context: [], sessionId: "s" }, { OPENCODE_API_KEY: "k" }, f), InterpretError);
+    assert.equal("max_tokens" in f.seen[0].body, false);
+  }
+});

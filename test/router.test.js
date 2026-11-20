@@ -79,3 +79,11 @@ test("a handler that throws becomes a 500 JSON error, not a crash", async () => 
   assert.equal(res.status, 500);
   assert.deepEqual(await res.json(), { error: "server" });
 });
+
+test("handlers are called with exactly (request, env) so handleText's deps default is not clobbered by ctx", async () => {
+  let args;
+  const router = createRouter({ app: "", client: {} }, { handleText: async (...a) => { args = a; return new Response("{}"); } });
+  await router.fetch(new Request("http://x/api/text", { method: "POST", body: "{}" }), { E: 1 }, { waitUntil() {} });
+  assert.equal(args.length, 2);
+  assert.deepEqual(args[1], { E: 1 });
+});

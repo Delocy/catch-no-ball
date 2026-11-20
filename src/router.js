@@ -29,7 +29,7 @@ export function createRouter(assets, handlers) {
         const handler = routes[`${request.method} ${pathname}`];
         if (!handler) return json({ error: "not_found" }, 404);
         try {
-          return noStore(await handler(request, env, ctx));
+          return noStore(await handler(request, env));
         } catch {
           return json({ error: "server" }, 500);
         }

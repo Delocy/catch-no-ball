@@ -29,7 +29,8 @@ export async function handleText(request, env, deps = { interpret }) {
   try {
     const { sentences, passes } = await deps.interpret({ transcript, context, sessionId }, env);
     return json({ status: "ok", source: "text", transcript, sentences, passes, cached: false });
-  } catch {
+  } catch (e) {
+    console.error(`interpret failed: ${e && e.message}`);
     return json({ status: "meaning_unavailable", source: "text", transcript, sentences: [], passes: 1, cached: false });
   }
 }

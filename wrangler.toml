@@ -4,9 +4,10 @@ compatibility_date = "2025-08-01"
 
 # Serve the app page, its CSS and the client JS from plain files, imported as strings.
 # No .svg: the logo is a static asset in public/.
+# Globs are relative to the entry file's folder (src/), not the repo root.
 [[rules]]
 type = "Text"
-globs = ["src/**/*.html", "src/**/*.css", "src/client/**/*.js"]
+globs = ["**/*.html", "**/*.css", "**/client/*.js"]
 fallthrough = false
 
 # public/ (landing page, logos) is served as static assets before the Worker runs.
