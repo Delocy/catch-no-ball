@@ -65,3 +65,35 @@ What changed in IMPL.md:
 - Privacy line updated to the PRD's new wording. Risks now use the PRD's R1–R11 numbers, plus IR-1…IR-9 for risks only this plan adds (IR-9 is teammates' work arriving late). New question for the user: what to do if only `two_call` works or MERaLiON-3 10B isn't served.
 
 Conflict to flag: PRD.md B2a still says "A setting forces Whisper during development". IMPL follows the user's revision-1 instruction (no Whisper in development or demos) and states this in its assumptions. The product manager should drop that sentence from the PRD.
+
+## Revision 3 (team split by folder ownership)
+
+What changed in IMPL.md:
+- **Team split rewritten** to the approved folder ownership. A owns `src/`, `test/` and the shared root files. B owns `evals/` (all of it, including the slice 7 code and tests) and `reports/r1-*.md` / `r2-*.md`. C owns `public/` and `docs/presentation/`. The rules: each person edits only their own folders; the shared files are A-only; B and C work on `b/...` and `c/...` branches and open PRs; A's session pulls `main` before each push; only A holds API keys; B's real run uses A's deployed URL plus the `ACCESS_CODE`, which A shares privately, and the MERaLiON run waits for A's go after checking `/api/budget`.
+- **Static assets.** `public/` is served as Cloudflare Workers static assets. A adds `[assets] directory = "./public"` and `run_worker_first = ["/app", "/api/*", "/client/*"]` in slice 1. I checked both against the wrangler 4.158 config schema: `run_worker_first` takes a boolean or an array of patterns, and the defaults are `not_found_handling = "none"` (unmatched paths go to the Worker) and `html_handling = "auto-trailing-slash"` (so `/` serves `index.html`).
+  - The Worker serves only `/app`, `/client/*` and `/api/*`. The router no longer serves `/`, `/logo.svg`, the manifest or the icon.
+  - Removed: `src/manifest.js`, the `.svg` Text glob, the PNG Data rule, `assets.logo`, slice 1's landing placeholder, and every `src/pages/landing.html`, `logo.svg` and `icon-180.png` path.
+  - New pitfall 8 and risk IR-10: a file in `public/` could shadow a Worker route. Config tests now reject `app`, `app.html`, `app/`, `api/` and `client/` in `public/`.
+- **C's contract** now uses `public/index.html`, the committed `public/logo.svg` (full logo) and `public/logo-mark.svg`, which is the favicon (**my call**: the full logo is 700×240 and unreadable at 32 px).
+  - The content rules are unchanged: tagline, example card, exact privacy line, "Open the app" → `/app`, no scripts or external URLs, phone-first, dark mode.
+  - For slice 9, C adds `public/manifest.webmanifest`, `public/icon-180.png` and three `<head>` tags.
+  - C previews with any static server. `test/pages.test.js` reads `public/` and is written in slice 1. Its landing tests are `todo` until C's file exists, and slice 5 removes the `todo`. The video prompt path is `docs/presentation/VideoPrompt.txt`.
+- **Evals moved to B.** The Team split now has a precise contract for B:
+  - B codes against the fixed `ChunkResult`/`Hint` shapes, using fixtures in `evals/fixtures/`.
+  - The API call is `/api/chunk` multipart with `x-access-code`, plus `x-asr: whisper` only for the Whisper run, and a 13 s gap per MERaLiON call. A 401 stops the run.
+  - The CLI flags are `--check`, `--base`, `--asr`, `--limit` (**my call**, for smoke runs) and `--compare`.
+  - The outputs are the console table, JSON, CSV, the cards page and the particle CSV. B also writes `evals/RESULTS.md` (**my call**: the committed summary C builds slides from, inside B's folder).
+  - The coverage rule covers every `evals/*.js` except `run.js` and the tests.
+  - The contract also lists what B needs from A and when: slices 1–3 modules on `main`, real `/api/chunk` replies after slice 3, then the deployed URL and access code after slice 5.
+- **Slice 7 changes.** B writes everything. A's part is to run the fresh-context `slice-7-reviewer` on B's PR, merge it, deploy, give the go and walk the demo. There is no Worker-side work, because `x-asr` shipped in slice 4. A's record of this goes in `reports/slice-7-integration.md`.
+- **Tests and coverage.** B's tests live in `evals/*.test.js`. The npm `test` and `coverage` scripts now glob both `test/**/*.test.js` and `evals/**/*.test.js`, and coverage excludes the eval test files. `all-modules.test.js` skips `*.test.js`. I verified on Node 22.10 in a scratch project:
+  - An empty eval glob doesn't fail.
+  - The exclude works.
+  - `node --test "evals/*.test.js"` runs ES-module tests with no `package.json`.
+  - `node --test evals/` (the bare folder) fails, so the plan uses the glob.
+- **Other sections updated.** The day-0 table gains D2b (B's eval code, day 1–4) and D5 (C's manifest and icon), and D4 is updated. Also updated: the slice overview and dependencies, repo layout, config table, copy table, section 2's note on B and C, slices 1, 5, 7 and 9, the release check, risks (IR-5 and IR-9 updated, new IR-10, IR-11 and IR-12) and assumptions.
+- **Unchanged:** option B, MERaLiON as the primary model, and the order of slices 1–9.
+
+Decisions for the user: none blocking. Two small points to confirm:
+- Slice 5 may deploy before C's landing page has merged, so the public `/` returns 404 until it lands.
+- The favicon is `logo-mark.svg`, not the full logo.

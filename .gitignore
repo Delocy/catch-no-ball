@@ -1,0 +1,18 @@
+# Dependencies and local Cloudflare state
+node_modules/
+.wrangler/
+
+# Secrets: API keys, ACCESS_CODE, DEMO_KEY. Never commit.
+.dev.vars
+.env
+
+# Eval audio is people's voices: shared privately, never committed
+evals/clips/
+evals/results/
+
+# Tool scratch
+.superpowers/
+coverage/
+
+# OS
+.DS_Store

@@ -4,30 +4,31 @@
 **Source of truth:** [PRD.md](PRD.md), revision 1, "option B" (user stories US-1…US-15, requirements A/L/B, metrics M1–M5, tests E1/E2, risks R1–R11). Binding user decisions: `.superpowers/main-flow/decisions.md`.
 **Replaces:** `docs/superpowers/plans/2026-11-20-catch-no-ball-v1.md` (a horizontal, task-by-task plan for a larger scope). Its interfaces and test ideas are reused here, re-cut into vertical slices. The old file was removed when this plan was approved.
 **Deadline:** 1 week. Slices 1–8 are Must. Slice 9 is Should and optional.
-**Revisions:** 1: MERaLiON is the main model from the first spoken card; Whisper is only the automatic fallback. 2: option B (MERaLiON hears transcript + meaning + tone of voice; OpenCode Go checks it and writes the card) and a 3-person team split.
+**Revisions:** 1: MERaLiON is the main model from the first spoken card; Whisper is only the automatic fallback. 2: option B (MERaLiON hears transcript + meaning + tone of voice; OpenCode Go checks it and writes the card) and a 3-person team split. 3: the team split is by folder ownership, so A, B and C can code at the same time without touching each other's files; `public/` is served as Cloudflare Workers static assets (Person C's); the slice 7 eval code moves to Person B.
 
 Labels: **(my call)** marks an engineering decision this plan makes that the PRD leaves open. Each one can be overruled.
 
 ---
 
-## Team split (3 people)
+## Team split (3 people, by folder ownership)
 
-Three people work at the same time without editing the same files.
+Three people code at the same time. Each person owns folders and files outright, and nobody edits another person's files, so B's and C's PRs never conflict with A's slices.
 
-| Person | Owns (does the work) | Files they edit | Hands in |
+| Person | Owns (folders/files) | Work | Hands in |
 |---|---|---|---|
-| **A: the user, with Claude** | All code: slices 1, 2, 3, 4, 6, 8 (and 9 if there is time), plus the code half of slices 5 and 7 (router, tests, deploy, eval tooling). Merges B's and C's PRs. | Everything not listed for B or C, including the shared files below. | Approved slices are committed and pushed **straight to `main`** by A's Claude session. |
-| **B** | Day-1 checks **R1** (particle test) and **R2** (phone-in-meeting test); recording the **15 eval clips**; writing **`evals/references.json`**; booking and running **E1** on day 5–6 with the cards page from slice 7 **(my call)**. | `reports/r1-particles.md`, `reports/r2-phone-in-meeting.md`, `evals/references.json`. Clips live in `evals/clips/` on their machine only (gitignored). | R1/R2 results by day 2 (R2 before slice 3's demo); clips and references by day 4 (slice 7 consumes them). |
-| **C** | The **logo**, the **landing page** copy and design (slice 5 consumes them), the **demo video script**, and the **presentation**. | `src/pages/landing.html` (after slice 1's placeholder), `src/pages/logo.svg`, `src/pages/icon-180.png` (only if slice 9 happens), `docs/presentation/**` (video script, slide notes, a link to the slides). | Logo and landing page by day 3; video script by day 5; presentation by day 6 (it needs B's E1 result, slice 7's tables and the deployed URL). |
+| **A: the user, with Claude** | `src/`, `test/`, `package.json`, `package-lock.json`, `wrangler.toml`, `.dev.vars.example`, `CLAUDE.md`, plus the other shared root files (`.gitignore`, `README.md`). | App pipeline slices 1, 2, 3, 4, 6, 8, and the Worker/route/deploy half of slices 5 and 9. Integrates and reviews B's eval PR in slice 7. Merges B's and C's PRs. Holds every API key. | Approved slices are committed and pushed **straight to `main`** by A's Claude session. |
+| **B** | `evals/` (all of it: `score.js`, `runner.js`, `cards-page.js`, `run.js`, their tests `evals/*.test.js`, `evals/fixtures/`, `references.example.json`, `references.json`, `README.md`, `RESULTS.md`), `reports/r1-*.md`, `reports/r2-*.md`. Clips live in `evals/clips/` on B's machine only (gitignored). | Day-1 checks **R1** (particle test) and **R2** (phone-in-meeting test); recording the **15 eval clips** and writing **`evals/references.json`**; **the slice 7 eval scripts and their tests**, built against the fixed contracts below with fixture JSON, so they need no running app until the final run; running the real eval and **E1**. | R1/R2 by day 2 (R2 before slice 3's demo); eval code PR by day 4; clips and references by day 4; full eval run and E1 result by day 6. |
+| **C** | `public/` (landing page `public/index.html`, `logo.svg`, `logo-mark.svg`, `icon-180.png`, `manifest.webmanifest`, and any other static file), `docs/presentation/` (video prompt and script, slide notes, a link to the slides). | Landing page, logo, home-screen icon and manifest (the front-end half of slices 5 and 9), the demo video and the presentation. | Landing page by day 3; manifest and icon by day 6 (only needed if slice 9 happens); video by day 6; presentation by day 6. |
 
 **Rules**
-- B and C work on their own branches (for example `b/references`, `c/landing`) and open PRs to `main`. A PR touches **only** that person's files. A (with Claude) reviews it, runs `npm test`, and merges it.
-- A's Claude session pushes approved slices straight to `main` (decisions.md). Before pushing, it pulls `main` so merged PRs from B and C are included.
-- **Only A edits the shared files:** `package.json`, `package-lock.json`, `wrangler.toml`, `src/index.js`, `src/router.js`, `.gitignore`, `.dev.vars.example`, `CLAUDE.md`, everything under `test/`, and every `.js` file under `src/` and `evals/`. If B or C need a change there (for example a new asset route), they ask A.
-- B and C never need API keys. Keys stay in A's `.dev.vars`. Eval clips and consent records are never committed; B shares the clips with A through a private folder (not a public link, not chat).
-- Neither B nor C runs MERaLiON requests from the app or scripts; the MERaLiON quota is spent only by A's slices and the eval runs (the R1 playground test is separate and doesn't use our API key).
+- **Each person edits only their own folders and files.** If someone needs a change in another person's file, they ask the owner. The shared files (`package.json`, `package-lock.json`, `wrangler.toml`, `src/index.js`, `src/router.js`, `.gitignore`, `.dev.vars.example`, `CLAUDE.md`, `README.md`) are **A-only**. B's code may *import* A's modules (`src/prompt.js`, `src/client/cards.js`, `src/meralion.js`) and read `src/client/app.css`, but never edits them; C's pages never depend on A's files.
+- **B's tests live in `evals/*.test.js`** (inside B's folder, so B's PRs touch only `evals/`). A's npm test glob picks them up: `node --test "test/**/*.test.js" "evals/**/*.test.js"` (section 1). A creates `package.json` in slice 1 (day 1); until it is on `main`, B runs `node --test "evals/*.test.js"` from the repo root (checked on Node v22.10: it detects ES module syntax by itself, so no `package.json` is needed; pass the glob, not the bare folder, which Node 22.10 rejects).
+- B and C work on their own branches (`b/...`, for example `b/evals-score`, `b/references`; `c/...`, for example `c/landing`) and open PRs to `main`. A PR touches **only** that person's folders. A (with Claude) reviews it, runs `npm test` and `npm run coverage`, and merges it. B and C pull `main` before opening a PR.
+- A's Claude session pushes approved slices straight to `main` (decisions.md). **Before each push it pulls `main`**, so merged PRs from B and C are included and nothing is overwritten.
+- **Nobody but A holds API keys** (`OPENCODE_API_KEY`, `MERALION_API_KEY`, the Cloudflare login). They stay in A's `.dev.vars` and in deployed secrets. B's real eval run uses A's deployed URL plus the `ACCESS_CODE`, which A shares with B privately (a direct message or password manager, never a PR, issue, file or group chat), and A may change it after the run.
+- Neither B nor C sends MERaLiON requests from scripts on their own schedule: B's MERaLiON eval run (slice 7) starts only after A checks `/api/budget` and says go. B's fixture-based tests never touch the network. (B's R1 playground test is separate and doesn't use our API key.) Eval clips and consent records are never committed; B shares the clips with A through a private folder (not a public link, not chat).
 
-**Contract for Person B: `evals/references.json`** (slice 7 reads exactly this; `node evals/run.js --check` validates it with no network call, so B runs it before the PR):
+**Contract for Person B, part 1: `evals/references.json`** (slice 7 reads exactly this; `node evals/run.js --check` validates it with no network call, and B runs it before the PR):
 ```json
 [
   {
@@ -50,11 +51,28 @@ Three people work at the same time without editing the same files.
 - `particles`: the Singlish particles actually spoken, lower case (for example `["lah", "lor"]`), used to count which ones each speech model kept.
 - Audio: one sentence per clip, 3–10 s, a quiet room, spoken with the intended tone of voice (MERaLiON now reads tone from the audio). Convert with `afconvert -f WAVE -d LEI16@16000 -c 1 in.m4a evals/clips/01.wav`. Everyone recorded agrees first to their voice going to MERaLiON (A*STAR) and Whisper (Cloudflare); B keeps the consent list privately.
 
-**Contract for Person C: landing page and logo** (slice 5 serves them; `test/pages.test.js` checks them, and C runs `npm install && npm test` before the PR; preview with `npm run dev` and open `http://localhost:8787/`, which needs no keys):
-- `src/pages/landing.html`: one self-contained HTML file. Inline CSS only, no `<script>`, no external fonts, images or URLs. Phone-first: readable at 375 px with no sideways scrolling, and a dark mode via `prefers-color-scheme`. It must contain: `<meta name="viewport" …>`; `<link rel="icon" href="/logo.svg">`; the logo from `/logo.svg` (an `<img>`); the name **Catch No Ball**; the tagline **For when you catch no ball.**; a one-paragraph explanation; an example card with the sentence **Eh the deadline confirm cannot shift one lah**, a one-line meaning and the tone word **firm**; a link with the text **Open the app** to `/app`; and the privacy line, exactly: **Audio is sent to A\*STAR's MERaLiON service to be transcribed and understood, and is never stored by us.** It may link only to `/`, `/app` and `/logo.svg` (if slice 9 happens, C also adds `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/icon-180.png">` and a `theme-color` meta). Any other asset needs a route from A first.
-- `src/pages/logo.svg`: a speech bubble with a small ball inside, hand-drawn style. A valid `<svg>` with a `viewBox`, no `<script>`, no external `href`, under 20 KB, readable at 32 px and on both light and dark backgrounds.
-- `src/pages/icon-180.png` (slice 9 only): a 180×180 PNG of the logo.
-- Video script and presentation: in `docs/presentation/` (Markdown, plus a link to the slides). They use the deployed URL (slice 5), the 60 s demo script in PRD section 8, slice 7's E2 table and particle chart CSV, and B's E1 before/after result. The video is recorded on day 6 after the release check.
+**Contract for Person B, part 2: the eval scripts** (the full interfaces and tests are in slice 7; this is what B builds against and what B needs from A):
+- **Code against the fixed shapes in section 1** (`Sentence`, `Hint`, `ChunkResult`, `TONES`). They don't change after this plan; if A ever has to change one, A tells B first. B writes hand-made fixture results in `evals/fixtures/*.json` (at least: a confident Singlish `ok`, an unsure `ok` with 2 readings, a plain `ok`, `meaning_unavailable`, `uncaught`, `silent`, a MERaLiON result with a `hint`, a Whisper result with `hint: null`) and tests everything with them and with a fake `send`. No test makes a network call.
+- **The API for the real run:** `POST <base>/api/chunk`, multipart fields `audio` (the clip's WAV bytes as a `Blob` of type `audio/wav`, filename = the clip name), `sessionId` (`eval-<stamp>`) and `context` (`"[]"`); header `x-access-code: <ACCESS_CODE from the environment>` on every request; header `x-asr: whisper` **only** for `--asr whisper` (`--asr meralion` sends no `x-asr`, i.e. the app's normal path); never `x-demo-key`. Replies: 200 `ChunkResult`; 401 `{ error: "access_code" }` stops the run with "ACCESS_CODE is wrong or missing" and exit code 1; 400 `bad_audio` / 413 `too_long` / 5xx / network errors are recorded as that clip's error row and the run continues. **Wait `EVAL_MERALION_GAP_MS = 13000` × calls per clip between clips for `--asr meralion`** (13 s in `combined` and `transcript_only` mode, 26 s in `two_call`; this keeps under MERaLiON's 5 a minute), 0 for Whisper. Calls per clip come from `MERALION_MODE` in `src/meralion.js` (on `main` after slice 3): 2 for `"two_call"`, else 1.
+- **CLI flags** (`evals/run.js`): `--check`; `--base <url>`; `--asr meralion|whisper`; `--limit <n>` (only the first n clips in reference order, for smoke runs; **my call**); `--compare <whisper.json> <meralion.json>`.
+- **Outputs:** the score table on the console (`formatTable`: plain English left alone, final tone %, MERaLiON's own tone %, ambiguity honest %, particles kept %, median and max response time, source mismatches); `evals/results/<stamp>-<asr>.json` (raw rows), `.csv` (for the person scoring meaning) and `-cards.html` (the E1 cards page); `--compare` writes `evals/results/<stamp>-particles.csv` (the presentation's particle chart). `evals/results/` is gitignored; B copies the summary tables (score table, particle table, response times, E1 result) into **`evals/RESULTS.md`**, which is committed and is what C builds the slides from.
+- **Coverage:** every `evals/*.js` file except `evals/run.js` (the CLI) and the test files counts toward the >80% gate (section 1). B runs `npm test` and `npm run coverage` before every PR once `package.json` is on `main`.
+- **What B needs from A, and when:**
+  - Day 1 (slice 1 on `main`): `package.json` with the test glob; `TONES` in `src/prompt.js`; `toCardModels`, `cardHtml` in `src/client/cards.js`; `src/client/app.css`. Until then B starts on the pieces that need none of these (`particlesKept`, `toCsv`, `runEval`, `summarise`) with `node --test "evals/*.test.js"`.
+  - Day 1–2 (slice 2): the `unsure` card kind.
+  - Day 2 (slice 3): `MERALION_MODE`; A also shares two or three real `/api/chunk` replies from the slice 3 demo (made from the `say` samples, so no one's voice), which B adds to `evals/fixtures/` to check the hand-made ones match.
+  - Day 3 (slice 5): the deployed URL (in `reports/slice-5-engineer.md`), and the `ACCESS_CODE`, shared privately. B can then do the free 2-clip Whisper smoke run (`--asr whisper --limit 2`) at any time.
+  - Day 4–5 (slice 7): A's go for the MERaLiON run (after checking `/api/budget`).
+  - B never needs local `wrangler dev`, keys or a Cloudflare login.
+
+**Contract for Person C: `public/`** (Cloudflare serves `public/` as static assets, section 1, so these are plain files: no keys, no Worker and no `npm install` are needed to work on them):
+- **Preview:** open the files with any static server from the repo root, for example `python3 -m http.server 8000 --directory public`, then `http://localhost:8000/` (the **Open the app** link 404s there; that is expected). Once slice 1 is on `main`, `npm run dev` also serves `public/` at `http://localhost:8787/` next to the app, still with no keys needed for the landing page.
+- **Check before the PR:** `node --test test/pages.test.js` (A's test, on `main` from slice 1; it reads C's files as text, needs no `npm install` and no keys).
+- `public/index.html` (served at `/`): one self-contained HTML file. Inline CSS only, **no `<script>`**, no external fonts, images or URLs. **Phone-first:** readable at 375 px with no sideways scrolling, and a **dark mode** via `prefers-color-scheme`. It must contain: `<meta name="viewport" …>`; `<link rel="icon" href="/logo-mark.svg">`; the full logo from `/logo.svg` (an `<img>` with alt text); the name **Catch No Ball**; the tagline **For when you catch no ball.**; a one-paragraph explanation; an **example card** with the sentence **Eh the deadline confirm cannot shift one lah**, a one-line meaning and the tone word **firm**; a link with the text **Open the app** to `/app`; and the **privacy line**, exactly: **Audio is sent to A\*STAR's MERaLiON service to be transcribed and understood, and is never stored by us.** It may link only to `/`, `/app`, `/logo.svg` and `/logo-mark.svg` (plus, for slice 9, `/manifest.webmanifest` and `/icon-180.png`).
+- `public/logo.svg` (**already committed**: the full logo) and `public/logo-mark.svg` (**already committed**: the square icon mark, used as the favicon): each a valid `<svg>` with a `viewBox`, no `<script>`, no external `href`, under 20 KB. The logo shows a speech bubble with a small ball inside, hand-drawn style; the mark is readable at 32 px; both read on light and dark backgrounds. C may refine them in later PRs; the paths stay.
+- **Reserved paths:** nothing in `public/` may be named `app`, `app.html`, `app/`, `api/` or `client/`. Those paths are the Worker's (`test/config.test.js` checks this).
+- **Slice 9 only (Should):** `public/manifest.webmanifest`, valid JSON with exactly `name: "Catch No Ball"`, `short_name: "Catch No Ball"`, `start_url: "/app"`, `display: "standalone"`, a `background_color` and `theme_color`, and `icons: [{ "src": "/logo-mark.svg", "sizes": "any", "type": "image/svg+xml" }, { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" }]`; `public/icon-180.png`, a 180×180 PNG of the mark (for example `qlmanage -t -s 180 -o . public/logo-mark.svg`, then renamed; committed as a binary, no build step); and, in `index.html`, `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/icon-180.png">` and a `theme-color` meta.
+- **Video and presentation:** in `docs/presentation/` (Markdown, plus a link to the slides; the video prompt is `docs/presentation/VideoPrompt.txt`). They use the deployed URL (slice 5), the 60 s demo script in PRD section 8, and B's `evals/RESULTS.md` (E2 table, particle table, E1 before/after result). The video is recorded on day 6 after the release check.
 
 ---
 
@@ -90,6 +108,11 @@ Phone (Safari / Chrome)                          Cloudflare Worker (free plan)
 - **The Worker is a thin pipeline** of pure, injected steps: auth → audio check → hear (MERaLiON) → interpret (OpenCode Go) → verbatim guard. IO functions take their dependencies (`fetchImpl`, `env`, `deps`) as arguments, so every decision is unit-tested in Node.
 - **Shared state** lives in one Durable Object (rate guard and monthly budget) and one KV namespace (MERaLiON reply cache). Both ship in slice 3, together with the first MERaLiON call.
 - **Client JS** lives in `src/client/*.js`. The Worker imports these files as text (wrangler `[[rules]] type = "Text"`) and serves them at `/client/<name>`. Node imports the same files as ES modules for tests. Only `src/client/app.js` touches the DOM.
+- **Static assets (`public/`, Person C's).** `public/` is served as Cloudflare Workers static assets (`[assets] directory = "./public"`, added by A in slice 1). Asset requests are free and unlimited on the Workers free plan, don't run the Worker and use no Worker CPU. It is still the same single Worker deployment (PRD B1). Routing, checked against the wrangler 4 config schema (wrangler 4.158):
+  - `run_worker_first = ["/app", "/api/*", "/client/*"]`: these paths always go to the Worker (`src/router.js`), even if a file with a matching name were ever put in `public/`.
+  - Every other path is looked up in `public/` first: `/` → `public/index.html` (the default `html_handling = "auto-trailing-slash"` maps `/` to `index.html`), `/logo.svg`, `/logo-mark.svg`, `/manifest.webmanifest`, `/icon-180.png`. Content types come from the file extension (`.webmanifest` → `application/manifest+json`).
+  - A path with no matching file falls through to the Worker (the default `not_found_handling = "none"`), and the router answers 404.
+  - So the Worker serves only `/app`, `/client/*` and `/api/*`. It never imports or serves the landing page, logo, icon or manifest, and needs no `ASSETS` binding.
 
 ### Tech stack
 
@@ -101,19 +124,25 @@ Phone (Safari / Chrome)                          Cloudflare Worker (free plan)
 ### Final repo layout (built up slice by slice)
 
 ```
-package.json  wrangler.toml  .gitignore  .dev.vars.example  CLAUDE.md  README.md
-src/
-  index.js            # imports HTML/CSS/client files as text; export default createRouter(...); export { MeralionGuard }  (coverage-excluded)
+package.json  package-lock.json  wrangler.toml  .gitignore  .dev.vars.example  CLAUDE.md  README.md   (Person A)
+src/                  (Person A)
+  index.js            # imports app.html, app.css and client files as text; export default createRouter(...); export { MeralionGuard }  (coverage-excluded)
   router.js           # createRouter(assets, handlers)  (all routing logic, testable)
-  auth.js  http.js  prompt.js  interpret.js  pipeline.js  audio.js  meralion.js  hear.js  whisper.js  guard.js  manifest.js
-  pages/  landing.html (Person C)  app.html  logo.svg (Person C)  icon-180.png (Person C, slice 9)
+  auth.js  http.js  prompt.js  interpret.js  pipeline.js  audio.js  meralion.js  hear.js  whisper.js  guard.js
+  pages/  app.html
   client/ app.js (DOM glue, coverage-excluded)  app.css  copy.js  api.js  storage.js  queue.js  cards.js
           session.js  wav.js  clipper.js  mic.js  recorder-worklet.js
-evals/  score.js  runner.js  cards-page.js  run.js (CLI, coverage-excluded)  references.example.json  references.json (Person B)  README.md
+test/                 (Person A)
+        *.test.js   helpers/wav.js (makeWav)   fixtures/ (slice 3 step 0: meralion-transcription.json, meralion-chat.json, meralion-error.json, r3-singlish.wav, r3-plain.wav)
+public/               (Person C; Workers static assets)
+        index.html (landing, served at /)  logo.svg  logo-mark.svg  icon-180.png (slice 9)  manifest.webmanifest (slice 9)
+docs/presentation/    (Person C)  VideoPrompt.txt  video script, slide notes, link to the slides
+evals/                (Person B)
+        score.js  runner.js  cards-page.js  run.js (CLI, coverage-excluded)
+        score.test.js  runner.test.js  cards-page.test.js  fixtures/*.json
+        references.example.json  references.json  README.md  RESULTS.md
         clips/ (gitignored)  results/ (gitignored)
-test/   *.test.js   helpers/wav.js (makeWav)   fixtures/ (slice 3 step 0: meralion-transcription.json, meralion-chat.json, meralion-error.json, r3-singlish.wav, r3-plain.wav)
-docs/presentation/  (Person C)
-reports/  <agent-name>.jsonc  <agent-name>.md
+reports/  <agent-name>.jsonc  <agent-name>.md   r1-particles.md  r2-phone-in-meeting.md (Person B)
 ```
 
 ### npm scripts (exact)
@@ -124,10 +153,12 @@ Verified against `node --help` on v22.10.0: `--experimental-test-coverage`, `--t
 "scripts": {
   "dev": "wrangler dev",
   "deploy": "wrangler deploy",
-  "test": "node --test \"test/**/*.test.js\"",
-  "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test-coverage-include=\"evals/**/*.js\" --test-coverage-exclude=\"src/index.js\" --test-coverage-exclude=\"src/client/app.js\" --test-coverage-exclude=\"evals/run.js\" --test-coverage-lines=81 --test-coverage-branches=81 --test-coverage-functions=81 \"test/**/*.test.js\""
+  "test": "node --test \"test/**/*.test.js\" \"evals/**/*.test.js\"",
+  "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test-coverage-include=\"evals/**/*.js\" --test-coverage-exclude=\"src/index.js\" --test-coverage-exclude=\"src/client/app.js\" --test-coverage-exclude=\"evals/run.js\" --test-coverage-exclude=\"evals/**/*.test.js\" --test-coverage-lines=81 --test-coverage-branches=81 --test-coverage-functions=81 \"test/**/*.test.js\" \"evals/**/*.test.js\""
 }
 ```
+
+- Two test globs: A's tests in `test/`, Person B's in `evals/*.test.js` (Team split). Both are run by `npm test` and both count for coverage. `evals/**/*.test.js` is excluded from the coverage totals so B's test files don't count as covered code. `public/` holds no `.js` (C's pages have no scripts), so it is outside the coverage include on purpose.
 
 - `npm test` runs the tests. `npm run coverage` runs them with coverage and **fails (exit 1) below 81% lines, branches or functions**. The threshold is 81, not 80, because Node passes at exactly the threshold and the PRD says *over* 80% (M4). Node prints an "ExperimentalWarning: glob" line; it is harmless.
 - The thresholds apply to the totals across all included files. The reviewer also flags any single non-excluded file under 60% lines.
@@ -139,10 +170,11 @@ Verified against `node --help` on v22.10.0: `--experimental-test-coverage`, `--t
 |---|---|---|
 | `src/index.js` | It imports `.html`, `.css`, `.svg` and client `.js` files as text through a wrangler rule. Node cannot import those, so tests cannot load this file. | It holds only imports, `export default createRouter(assets)` and `export { MeralionGuard }`. All routing is in `src/router.js` (tested). `test/config.test.js` reads `index.js` as text and checks the wiring (below). |
 | `src/client/app.js` | Browser-only DOM glue: `document`, `getUserMedia`, `AudioContext`, `navigator.wakeLock`, events. | Rule for the engineer and reviewer: `app.js` makes no decisions. Every branch (what card to show, when to scroll, what an error means, when to show a banner) lives in a tested module (`cards.js`, `session.js`, `queue.js`, `mic.js`, `api.js`). Checked by hand in each slice's demo. |
-| `evals/run.js` | CLI wrapper: reads argv, files and env, makes real network calls. | All logic is in `evals/runner.js`, `evals/score.js` and `evals/cards-page.js` (tested with fakes). |
-| HTML, CSS, SVG | Not JavaScript, so Node coverage does not measure them. | `test/pages.test.js` reads them as text and asserts the required copy, links and tags. |
+| `evals/run.js` (Person B) | CLI wrapper: reads argv, files and env, makes real network calls. | All logic is in `evals/runner.js`, `evals/score.js` and `evals/cards-page.js` (tested with fakes and fixture JSON by B's `evals/*.test.js`). |
+| `evals/**/*.test.js` (Person B) | B's test files, not code under test. | They are run by `npm test`; only the modules they test count. |
+| HTML, CSS, SVG, the manifest (`src/pages/app.html`, `src/client/app.css`, everything in `public/`) | Not JavaScript, so Node coverage does not measure them. | `test/pages.test.js` reads them as text (C's files from `public/`) and asserts the required copy, links, tags and, in slice 9, the manifest JSON. |
 
-**Files that are never imported are invisible to Node's coverage** (checked in a scratch project). So `test/all-modules.test.js` walks `src/` and `evals/`, and dynamically imports every `.js` file except the three excluded ones. An untested module then shows up at 0% instead of being silently skipped. Before importing, it stubs `globalThis.registerProcessor` and `globalThis.AudioWorkletProcessor` so the worklet file can load.
+**Files that are never imported are invisible to Node's coverage** (checked in a scratch project). So `test/all-modules.test.js` walks `src/` and `evals/` (an `evals/` that doesn't exist yet is fine), and dynamically imports every `.js` file except the three excluded ones and `*.test.js` files (importing a test file would run its tests twice). An untested module then shows up at 0% instead of being silently skipped. Before importing, it stubs `globalThis.registerProcessor` and `globalThis.AudioWorkletProcessor` so the worklet file can load.
 
 ### Configuration and secrets (who adds what, when)
 
@@ -152,14 +184,14 @@ Secrets come only from `env`: `.dev.vars` locally (gitignored) and `npx wrangler
 |---|---|---|---|
 | `OPENCODE_API_KEY` | secret | Slice 1 | The course key. |
 | `ACCESS_CODE` | secret | Slice 1 | Chosen by the user. If unset or empty, every `/api/*` request gets 401 (fail closed). |
-| `[[rules]] type = "Text"` | wrangler.toml | Slice 1 | `globs = ["**/*.html", "**/*.css", "**/*.svg", "src/client/**/*.js"]`, `fallthrough = false` |
+| `[[rules]] type = "Text"` | wrangler.toml | Slice 1 | `globs = ["src/**/*.html", "src/**/*.css", "src/client/**/*.js"]`, `fallthrough = false` (no `.svg`: the logo is a static asset now) |
+| `[assets] directory = "./public"`, `run_worker_first = ["/app", "/api/*", "/client/*"]` | wrangler.toml | Slice 1 | Serves Person C's `public/` as static assets (routing in section 1). Added by A in slice 1 because `public/logo.svg` and `public/logo-mark.svg` are already committed; C needs nothing from A for it and just edits files in `public/`. |
 | `MERALION_API_KEY` | secret | Slice 3 | The user's key (Q2). Put in `.dev.vars` by the user; the slice 3 engineer reads it from there for the R3 check. |
 | `[[durable_objects.bindings]]` + `[[migrations]]` | wrangler.toml | Slice 3 | `name = "MERALION_GUARD"`, `class_name = "MeralionGuard"`; `tag = "v1"`, `new_sqlite_classes = ["MeralionGuard"]`. **Added in the same change as `export { MeralionGuard } from "./guard.js"` in `src/index.js`.** The guard ships with the first MERaLiON call. |
 | `[[kv_namespaces]] binding = "CACHE"` | wrangler.toml | Slice 3 | Placeholder id in slice 3 (local dev accepts any id and needs no login); the real id from `npx wrangler kv namespace create CACHE` in slice 5, before the first deploy. |
 | `[ai] binding = "AI"` | wrangler.toml | Slice 4 | The slice that adds the Whisper fallback. Workers AI always runs remotely, even in `wrangler dev`, so it needs `npx wrangler login`. |
 | `[observability] enabled = true` | wrangler.toml | Slice 5 | Used to read CPU time per request in the dashboard. |
 | `DEMO_KEY` | secret | Slice 6 | Chosen by the user. Empty means no demo access. |
-| `[[rules]] type = "Data"` for `**/*.png` | wrangler.toml | Slice 9 | For the home-screen icon. |
 
 `compatibility_date = "2025-08-01"`, `name = "catch-no-ball"`, `main = "src/index.js"` (same as Lunch Uncle). There is **no** `FORCE_WHISPER` or other switch that makes Whisper the default (the earlier plan's development default is removed).
 
@@ -192,6 +224,7 @@ Development uses the same quota as the evals and the demo. Practice for every en
 5. **Raw PCM via AudioWorklet, 16 kHz mono WAV encoded on the phone.** No `MediaRecorder`.
 6. **Interpreter normalisation:** a plain-English sentence becomes `confident: true`, `readings: []`, `tone: "neutral"`, `meaning: ""`, `terms: []`, whatever the model said. Otherwise a stray `confident: false` on plain English triggers a needless retry. `context` that is `null`, not an array, or holds non-strings becomes `[]` / is filtered.
 7. **One test helper for WAVs:** `test/helpers/wav.js` exports `makeWav(seconds, { sampleRate = 16000, channels = 1, fill = 0 } = {})`. Used by server and client tests. It is outside the test glob, so it is not run as a test file.
+8. **A static asset can shadow a Worker route.** With `[assets]`, a file in `public/` whose path matches a request is served instead of the Worker (for example a stray `public/app.html` would replace the app at `/app`). `run_worker_first = ["/app", "/api/*", "/client/*"]` sends those paths to the Worker first, and `test/config.test.js` also fails if `public/` contains `app`, `app.html`, `app/`, `api/` or `client/`. The Worker never imports anything from `public/`.
 
 ### Shared contracts (later slices depend on these exact shapes)
 
@@ -260,7 +293,7 @@ All `/api/*` routes check `x-access-code` **before reading the body or calling a
 | `SILENCE_RMS` | `0.01` | `src/client/wav.js` |
 | `CONTEXT_KEEP` | `3` | `src/client/session.js` |
 | `RETRY_MS` | `3000` | `src/client/queue.js` |
-| `EVAL_MERALION_GAP_MS` | `13000` per MERaLiON call (so 13 s or 26 s between clips; keeps under 5 a minute) | `evals/runner.js` |
+| `EVAL_MERALION_GAP_MS` | `13000` per MERaLiON call (so 13 s or 26 s between clips; keeps under 5 a minute) | `evals/runner.js` (Person B) |
 
 ### User-facing copy (exact; in `src/client/copy.js` as `COPY`, asserted by `test/copy.test.js`)
 
@@ -278,8 +311,8 @@ All `/api/*` routes check `x-access-code` **before reading the body or calling a
 | `cantListen` | `This browser can't listen. Type instead.` | US-8 |
 | `micBlocked` | `The microphone is blocked. iPhone Safari: tap aA, then Website Settings, then Microphone: Allow. Android Chrome: tap the icon left of the address, then Permissions, then Microphone: Allow. Or type below.` **(my call: wording)** | US-8 |
 | `newToMe` / `learnMore` | `New to me` / `Learn more` | US-14 |
-| landing tagline (in Person C's `landing.html`) | `For when you catch no ball.` | US-1 |
-| landing privacy line (in Person C's `landing.html`) | `Audio is sent to A*STAR's MERaLiON service to be transcribed and understood, and is never stored by us.` | L1 |
+| landing tagline (in Person C's `public/index.html`) | `For when you catch no ball.` | US-1 |
+| landing privacy line (in Person C's `public/index.html`) | `Audio is sent to A*STAR's MERaLiON service to be transcribed and understood, and is never stored by us.` | L1 |
 
 ---
 
@@ -303,7 +336,7 @@ Every slice follows the same loop. Subagents work only in the repo's worktree, n
 4. **Show the user.** The controller gives the user the slice's demo script. The user tries it (browser, then both phones, iPhone Safari and Android Chrome, from slice 5 on) and gives feedback. The controller records it in `./reports/slice-N-feedback.md`. Small feedback is fixed in this slice (back to step 3). Bigger feedback becomes a note on a later slice.
 5. **Commit and continue.** After the user's OK, the controller commits and pushes. **The next slice starts only after this feedback.**
 
-Persons B and C don't use this loop: their PRs are reviewed and merged by A (see Team split). A slice that consumes their work (5 and 7) checks it with the same tests.
+Persons B and C don't run this loop themselves: their PRs are reviewed and merged by A (see Team split), after `npm test` and `npm run coverage` pass on the PR branch merged with `main`. The slices that consume their work check it: slice 5 (C's `public/` landing page, via `test/pages.test.js`), slice 7 (B's `evals/` PR: A's controller runs the fresh-context `slice-7-reviewer` on B's diff, B fixes the findings on their branch, then A merges) and slice 9 (C's manifest and icon).
 
 **Status file format** (decisions.md): `./reports/<name>.jsonc` is a JSONC array of `{ "time": ISO-8601, "step": string, "status": "started" | "progress" | "done" | "blocked", "note": string }`, `//` comments allowed. Create it when starting; rewrite the array at each meaningful step.
 
@@ -329,8 +362,10 @@ These run before or alongside slice 1, except R3, which the slice 3 engineer run
 | R3 + R9 + R10 | **MERaLiON check** (A, run by the slice 3 engineer) | Start of slice 3 | Step 0 of slice 3, with the user's key from `.dev.vars`: which models are served (MERaLiON-3 10B?), the transcription request/response, whether chat/completions accepts audio and its request/response shape, tokens per clip, the error shape. At most 8 requests, about 20 s of audio. The user only needs the key in place. | Mode decided: `combined`, `two_call` or `transcript_only` (option A). | **Slice 3** cannot build any MERaLiON code until it is done. Output: fixtures and `reports/r3-meralion-format.md`. Slices 1–2 are not blocked. |
 | R2 | **Phone-in-meeting test** (B) (the brief's riskiest bet) | Day 1–2 | The brief's 3-minute mock meeting with 3–5 non-Singaporean classmates, translations typed into a shared doc they follow on their phones. | 3 of 5 would use it during or right after, and at most 1 finds it too awkward. | **Slice 3's demo** (live vs recap). If most say "only after", slice 3 holds cards and shows them all at Stop (recap). Same pipeline; only `app.js` changes. Slices 1–2 are not blocked. |
 | D2 | **Eval clips and references** (B) | Day 2–4 | Singaporean teammates record the 10 E1 Singlish sentences (at least 2 deliberately ambiguous, e.g. "can meh" vs "can lor") and 5 plain-English office sentences, with the intended tone of voice and with consent to send them to MERaLiON and Cloudflare. A Singaporean teammate writes `evals/references.json` in the Team split schema. | 15 WAVs plus `references.json` passing `node evals/run.js --check`. | **Slice 7's run** (not its build). |
+| D2b | **Eval scripts** (B) | Day 1–4 | Build `evals/score.js`, `runner.js`, `cards-page.js`, `run.js` and their tests against the Team split contract, with fixture JSON (no running app, no keys). Uses A's slice 1–3 modules from `main` as they land. | `npm test` and `npm run coverage` pass on B's branch merged with `main`; PR open by day 4. | **Slice 7** (A reviews and merges it there). |
 | D3 | **E1 participants** (B) | Book by day 3 | 3–5 non-Singaporean classmates for day 5–6. | — | E1 itself (after slice 7). |
-| D4 | **Logo and landing page** (C) | By day 3 | Per the Team split contract. | `npm test` passes on C's branch. | **Slice 5's demo** (placeholders let it build and deploy first). |
+| D4 | **Landing page** (C) (the logo and icon mark are already in `public/`) | Day 1–3 | Per the Team split contract, in `public/index.html`; preview with any static server. | `node --test test/pages.test.js` passes on C's branch (once slice 1 is on `main`). | **Slice 5's demo and deploy** (slice 5 can build without it; `/` 404s until it lands). |
+| D5 | **Manifest and icon** (C) | By day 6, only if slice 9 is planned | `public/manifest.webmanifest`, `public/icon-180.png` and the three `<head>` tags in `public/index.html`, per the contract. | `node --test test/pages.test.js` passes. | **Slice 9** only. |
 
 ---
 
@@ -342,13 +377,15 @@ These run before or alongside slice 1, except R3, which the slice 3 engineer run
 | 2 | US-6 (+ B5 context) | Ambiguous lines show "Could mean: … or …" | Day 1–2 |
 | 3 | US-3, US-4 (speech), US-7, US-8 (mic blocked); B2, B3, B3a, B4 (hint), B6 | Step 0 decides the MERaLiON mode; tap Listen on the laptop, speak, MERaLiON's transcript and reading → OpenCode Go → card; `/api/budget` shows the spend | Day 2 |
 | 4 | US-10 (B2a) | Break the MERaLiON key or hit 5 a minute: Whisper takes over, cards from the transcript alone, "Backup mode" shows | Day 3 |
-| 5 | US-1, deploy (goal 4); consumes C's landing page and logo | Landing page and the live app on your iPhone (Safari) and Android (Chrome) | Day 3 |
+| 5 | US-1, deploy (goal 4); consumes C's `public/` (landing page, logo) | Landing page and the live app on your iPhone (Safari) and Android (Chrome) | Day 3 |
 | 6 | US-12 | Demo key link on both phones; the reserved last quarter of the quota | Day 4 |
-| 7 | US-13 (E2, feeds E1); consumes B's clips and references | One command prints the score table (incl. MERaLiON's tone vs the final card's), the particle comparison and the E1 cards page | Day 4–5 |
+| 7 | US-13 (E2, feeds E1); consumes B's `evals/` PR (eval code and tests), clips and references; A integrates and reviews | One command prints the score table (incl. MERaLiON's tone vs the final card's), the particle comparison and the E1 cards page | Day 4–5 |
 | 8 | US-9 | Go offline mid-listen: banner, cards stay, auto-resume, "Missed some speech" | Day 5 |
-| 9 (Should, optional) | US-14, US-15 | Tap a term for its gloss; add the app to the home screen | Day 7 |
+| 9 (Should, optional) | US-14, US-15; consumes C's manifest and icon in `public/` | Tap a term for its gloss; add the app to the home screen | Day 7 |
 
 Order rationale: slice 1 needs only the OpenCode key, so it is demoable on day 1. Speech arrives with MERaLiON from the start (slice 3, user decision), so the rate guard, the budget counter and the cache ship in that same slice to protect the free quota; slice 3 begins with the MERaLiON check that picks the option B mode (or the option A fallback). Whisper comes next and only as the fallback (slice 4). Deploying in slice 5 makes every later slice testable on both phones over HTTPS. The demo key (slice 6) lands before evals. Evals (slice 7) come before the offline banner (slice 8), because E1 on day 5–6 needs the prepared cards and the clips are a dependency outside our control.
+
+Who codes what, in parallel: A builds slices 1–4, 6 and 8 and the Worker/deploy half of 5 and 9 in order. From day 1, B builds the eval code (slice 7's code) on fixtures and C builds the landing page in `public/`; neither waits for A's slices except to import or test against what is already on `main` (Team split). A's slice 5 and 7 rounds are mostly integration: deploying C's pages, and reviewing, merging and running B's evals.
 
 If time runs short, slices 5 and 6 may be merged into one feedback round (deploy plus demo key). Nothing else should be merged.
 
@@ -370,19 +407,21 @@ If time runs short, slices 5 and 6 may be merged into one feedback round (deploy
 6. Put a wrong `OPENCODE_API_KEY` in `.dev.vars`, restart, type a line: the typed text with "Meaning unavailable, tap to retry". Fix the key, restart, tap the card: it becomes a normal card in place.
 7. `curl -s -X POST localhost:8787/api/text` prints `{"error":"access_code"}`.
 8. Toggle the OS to dark mode: the page follows.
+9. Open `localhost:8787/logo.svg`: the logo, served from `public/` as a static asset (the tab shows the icon mark). Open `localhost:8787/`: Person C's landing page if their PR has merged, otherwise a 404 (there is no landing placeholder; `public/` serves `/`).
 *Feedback wanted:* Is the card readable at a glance? Is the tone chip clear? Is the faded plain line faded enough? (Ambiguous lines may still show one guess until slice 2.)
 
 **Files**
-- Create: `package.json`, `wrangler.toml` (Text rule only, no bindings), `.gitignore` (`node_modules/`, `.wrangler/`, `.dev.vars`, `.DS_Store`, `evals/clips/`, `evals/results/`), `.dev.vars.example`, `CLAUDE.md` (Lunch Uncle's conventions: IO vs pure split, test the pure part, secrets from env only, `npm test` and `npm run coverage` before handing over, no runtime deps; plus, from slice 3 on, the MERaLiON development practice from section 1), `src/index.js`, `src/router.js`, `src/http.js`, `src/auth.js`, `src/prompt.js`, `src/interpret.js`, `src/pipeline.js`, `src/pages/landing.html` (placeholder: name, tagline, link to `/app`), `src/pages/app.html`, `src/client/app.js`, `src/client/app.css`, `src/client/copy.js`, `src/client/api.js`, `src/client/storage.js`, `src/client/queue.js`, `src/client/cards.js`.
+- Create: `package.json` (scripts exactly as in section 1, including the `evals/**/*.test.js` glob), `wrangler.toml` (the Text rule and the `[assets]` block with `run_worker_first` from the config table; no bindings), `.dev.vars.example`, `CLAUDE.md` (Lunch Uncle's conventions: IO vs pure split, test the pure part, secrets from env only, `npm test` and `npm run coverage` before handing over, no runtime deps; plus, from slice 3 on, the MERaLiON development practice from section 1), `src/index.js`, `src/router.js`, `src/http.js`, `src/auth.js`, `src/prompt.js`, `src/interpret.js`, `src/pipeline.js`, `src/pages/app.html` (with `<link rel="icon" href="/logo-mark.svg">`), `src/client/app.js`, `src/client/app.css`, `src/client/copy.js`, `src/client/api.js`, `src/client/storage.js`, `src/client/queue.js`, `src/client/cards.js`.
+- Check (already committed): `.gitignore` lists `node_modules/`, `.wrangler/`, `.dev.vars`, `.DS_Store`, `evals/clips/`, `evals/results/`; edit only if something is missing. Do **not** create anything in `public/` (Person C's); `public/logo.svg` and `public/logo-mark.svg` are already there.
 - Tests: `test/auth.test.js`, `test/router.test.js`, `test/prompt.test.js`, `test/interpret.test.js`, `test/verbatim.test.js`, `test/pipeline-text.test.js`, `test/cards.test.js`, `test/api.test.js`, `test/storage.test.js`, `test/queue.test.js`, `test/copy.test.js`, `test/pages.test.js`, `test/config.test.js`, `test/all-modules.test.js`.
 
 **Interfaces produced** (later slices depend on these)
 - `src/http.js`: `json(data, status = 200, headers = {}) -> Response` (adds `content-type: application/json` and `cache-control: no-store`); `asset(body, contentType) -> Response`.
 - `src/auth.js`: `hasAccess(request, env) -> boolean`. True only when `env.ACCESS_CODE` is a non-empty string and the `x-access-code` header equals it. Compare with a length check plus an XOR loop, not `===` early exit.
 - `src/router.js`: `createRouter(assets, handlers) -> { fetch(request, env, ctx) }`
-  - `assets = { landing: string, app: string, client: Record<string, string> }` (later: `logo`, `manifest`, `icon`)
+  - `assets = { app: string, client: Record<string, string> }` (no landing page, logo, icon or manifest: those are static assets in `public/`, served before the Worker runs)
   - `handlers = { handleText, handleChunk?, handleBudget? }`, each `(request, env) -> Promise<Response>`
-  - Routes: `GET /` (landing), `GET /app`, `GET /client/<name>` (`.js` as `text/javascript; charset=utf-8`, `.css` as `text/css; charset=utf-8`, unknown name 404), `POST /api/check`, `POST /api/text`. Any `/api/*` without access returns 401 `{ error: "access_code" }` before any handler runs. Everything else 404.
+  - Routes: `GET /app`, `GET /client/<name>` (`.js` as `text/javascript; charset=utf-8`, `.css` as `text/css; charset=utf-8`, unknown name 404), `POST /api/check`, `POST /api/text`. Any `/api/*` without access returns 401 `{ error: "access_code" }` before any handler runs. Everything else 404 (including `/` when `public/index.html` doesn't exist yet: static assets answer first, and only unmatched paths reach the Worker).
 - `src/prompt.js`: `TONES`, `SETTING`, `buildMessages({ transcript, context = [], retry = false }) -> Array<{ role, content }>` (slice 3 adds `hint = null`) (a system message and a user message).
 - `src/interpret.js`:
   - `class InterpretError extends Error`
@@ -424,7 +463,7 @@ If time runs short, slices 5 and 6 may be merged into one feedback round (deploy
   - `hasAccess rejects a wrong or missing code`: `nope` → false; no header → false; `s3cre` (prefix) → false.
   - `hasAccess fails closed when ACCESS_CODE is unset or empty`: env `{}` with header `""` → false; env `{ ACCESS_CODE: "" }` with header `""` → false.
 - `test/router.test.js` (fake assets, spy handlers)
-  - `GET / serves the landing page as text/html`; `GET /app serves the app page`.
+  - `GET /app serves the app page as text/html`; `GET / → 404 from the router` (in production `/` is answered by `public/index.html` before the Worker runs; the router never serves a landing page).
   - `GET /client/app.js is served as text/javascript`; `GET /client/app.css as text/css`; `GET /client/nope.js → 404`.
   - `POST /api/text without a code → 401 {error:"access_code"} and the handler is never called`.
   - `POST /api/check with the right code → 200 {ok:true}`; wrong code → 401.
@@ -469,14 +508,20 @@ If time runs short, slices 5 and 6 may be merged into one feedback round (deploy
 - `test/storage.test.js`: `get/set/remove round-trip`; `a storage that throws on every call falls back to memory and never throws`.
 - `test/queue.test.js`: `sends one at a time in push order when the first send is slow` (onResult order `[1, 2]`; send 2 starts after onResult 1); `an error from send goes to onResult as the error argument and the queue continues`; `idle resolves when nothing is in flight`.
 - `test/copy.test.js`: each `COPY` value equals the table in section 1, character for character.
-- `test/pages.test.js`: `app.html loads /client/app.js as a module, has a viewport meta, a text input and an access-code form`; `landing.html has "Catch No Ball" and a link to /app`.
+- `test/pages.test.js` (reads files as text; **this is also the contract test Person C runs** with `node --test test/pages.test.js`):
+  - `app.html loads /client/app.js as a module, has a viewport meta, <link rel="icon" href="/logo-mark.svg">, a text input and an access-code form`.
+  - `public/logo.svg and public/logo-mark.svg are each an <svg> with a viewBox, no <script>, no external href, under 20 KB` (these files exist already, so these tests run for real from slice 1).
+  - The landing contract on `public/index.html`, exactly as in the Team split: `has a viewport meta, <link rel="icon" href="/logo-mark.svg">, an <img> of /logo.svg, the name "Catch No Ball", the tagline "For when you catch no ball.", an example card with the deadline sentence and the word firm, an "Open the app" link to /app, and the exact privacy line`; `has no <script> and no external URLs (no http:, https: or // in src, href or url())`; `references no local paths other than /, /app, /logo.svg, /logo-mark.svg` (slice 9 adds `/manifest.webmanifest` and `/icon-180.png`); `has a prefers-color-scheme: dark rule`. Written in slice 1 so C can run them from day 1; while `public/index.html` doesn't exist they are marked `{ todo: "waiting for Person C" }` (Node reports them without failing). Slice 5 removes the `todo`.
 - `test/config.test.js` (reads files as text):
   - `every file in src/client is imported in src/index.js`;
   - `if wrangler.toml declares MeralionGuard, index.js exports it`;
   - `wrangler.toml [vars] has no secret names (OPENCODE_API_KEY, MERALION_API_KEY, ACCESS_CODE, DEMO_KEY)`;
+  - `wrangler.toml has [assets] directory "./public" and run_worker_first with /app, /api/* and /client/*`;
+  - `public/ contains nothing named app, app.html, app/, api/ or client/` (pitfall 8);
+  - `package.json's test and coverage scripts include both test/**/*.test.js and evals/**/*.test.js`;
   - `.gitignore lists .dev.vars, evals/clips/, evals/results/`;
   - `package.json has no dependencies, only devDependencies.wrangler`.
-- `test/all-modules.test.js`: imports every `.js` under `src/` and `evals/` except the three exclusions.
+- `test/all-modules.test.js`: imports every `.js` under `src/` and `evals/` except the three exclusions and `*.test.js`; a missing `evals/` is fine.
 
 **Acceptance criteria**
 - The demo script works end to end in desktop Chrome at 375 px width, light and dark.
@@ -774,7 +819,7 @@ If MERaLiON-3 10B is not served but another MERaLiON model hears audio, use it, 
 ### Slice 5: Landing page, logo, and the app on both phones (deploy)
 
 **Stories:** US-1 (landing page, L1), deploy to the free `*.workers.dev` address (PRD goal 4), and the phone checks for US-3, US-4 and US-10 on **both iPhone (Safari) and Android (Chrome)**.
-**Depends on:** slice 4; login and a registered `workers.dev` subdomain (D1b); **Person C's `src/pages/landing.html` and `src/pages/logo.svg`** (see Team split; the pages test below is their contract). If C's PR has not merged when this slice starts, the engineer adds a minimal placeholder `logo.svg`, keeps slice 1's placeholder landing page, deploys, and redeploys when C's PR lands (C's files then replace the placeholders whole). Until then the landing and logo content tests are marked `{ todo: "waiting for Person C" }` (Node reports them without failing). The slice's demo and DoD wait for C's version, with those tests passing and no longer `todo`.
+**Depends on:** slice 4; login and a registered `workers.dev` subdomain (D1b); **Person C's `public/`** (`public/index.html`, plus the already-committed `public/logo.svg` and `public/logo-mark.svg`; see Team split; `test/pages.test.js` is their contract). `public/` is deployed with the Worker as static assets by the same `npx wrangler deploy`; the engineer never edits or adds files in `public/`. If C's landing page has not merged when this slice starts, the engineer builds and deploys anyway (`/` returns the Worker's 404 until then) and redeploys when C's PR lands. The slice's demo and DoD wait for C's page, with the landing tests passing and their `todo` removed.
 **User provides:** run the deploy commands below (or approve the engineer running them), set the secrets, run `npx wrangler kv namespace create CACHE` (or approve it), and test on their iPhone and their Android phone.
 
 **Demo script** (do steps 1–3 on the iPhone in Safari, then again on the Android phone in Chrome)
@@ -783,15 +828,16 @@ If MERaLiON-3 10B is not served but another MERaLiON model hears audio, use it, 
 3. Listen again and lock the phone for 10 s, then unlock: note what happened (iOS may pause audio; the Wake Lock should keep the screen on).
 4. On a laptop: open the dashboard's Workers → catch-no-ball → Observability and note CPU time per `/api/chunk` request.
 5. `curl -s -H "x-access-code: $ACCESS_CODE" https://catch-no-ball.<subdomain>.workers.dev/api/budget`: the deployed counter (it starts at 0; local development usage is not in it, see IR-7).
+6. `curl -sI https://catch-no-ball.<subdomain>.workers.dev/logo.svg | grep -i content-type` shows `image/svg+xml` (a static asset); `curl -sI …/app` shows `text/html` from the Worker.
 *Feedback wanted:* Does the landing page say what it is in one glance? Is the logo right? Does listening work on both phones? (Landing and logo feedback goes to Person C.)
 
 **Files**
-- **Owned by Person C (not edited by the engineer):** `src/pages/landing.html` (full page per L1) and `src/pages/logo.svg` (a speech bubble with a small ball inside, hand-drawn style). The engineer only adds the temporary placeholder `logo.svg` if C's has not landed.
-- Create (Person A / engineer): `README.md` (what it is, setup, dev, test, coverage, deploy, the MERaLiON development practice, the team split, where evals live).
-- Modify (Person A / engineer): `src/router.js` (`GET /logo.svg` as `image/svg+xml`), `src/index.js` (import the logo), `src/pages/app.html` (`<link rel="icon" href="/logo.svg">`), `wrangler.toml` (real KV id; `[observability] enabled = true`).
-- Tests: extend `test/pages.test.js`, `test/router.test.js`, `test/config.test.js`.
+- **Owned by Person C (not edited by the engineer):** everything in `public/`: `index.html` (full page per L1), `logo.svg`, `logo-mark.svg`. Served as static assets; no router or `index.js` change is needed for them.
+- Create or update (Person A / engineer): `README.md` (what it is, setup, dev, test, coverage, deploy, the MERaLiON development practice, the team split and folder ownership, where evals live, how C previews `public/`).
+- Modify (Person A / engineer): `wrangler.toml` (real KV id; `[observability] enabled = true`). The `[assets]` block is already there from slice 1.
+- Tests: extend `test/pages.test.js` (remove the landing tests' `todo`), `test/config.test.js`.
 
-**Interfaces:** `assets.logo: string` added to `createRouter`. No new API.
+**Interfaces:** none new. No new API, no new route (the Worker still serves only `/app`, `/client/*` and `/api/*`).
 
 **Deploy runbook** (the user runs these or approves them)
 ```bash
@@ -804,9 +850,8 @@ npm test && npm run coverage && npx wrangler deploy   # prints https://catch-no-
 Every later slice ends its demo with `npx wrangler deploy`, so the user can test on both phones. `DEMO_KEY` (slice 6) is put the same way.
 
 **Tests**
-- `test/pages.test.js` (**the contract for Person C**, written by the engineer before C's PR is reviewed): `landing has the name "Catch No Ball", the tagline "For when you catch no ball.", the exact privacy line "Audio is sent to A*STAR's MERaLiON service to be transcribed and understood, and is never stored by us.", an "Open the app" link to /app, the logo via /logo.svg, <link rel="icon" href="/logo.svg">, an example card with the deadline sentence and the word firm, and a viewport meta`; `landing references no other local paths than /, /app and /logo.svg` (slice 9 adds the manifest and icon); `landing has no <script> and no external URLs`; `logo.svg is an <svg> with a viewBox, no <script>, no external href, under 20 KB`.
-- `test/router.test.js`: `GET /logo.svg → image/svg+xml`.
-- `test/config.test.js`: `the KV id is not the placeholder`.
+- `test/pages.test.js` (**the contract for Person C**, written in slice 1): the landing tests on `public/index.html` lose their `todo` and must pass; a new `public/index.html exists` test fails if the file is missing, so the deployed `/` can't silently 404.
+- `test/config.test.js`: `the KV id is not the placeholder`; `[observability] enabled = true`.
 
 **Acceptance criteria**
 - The landing page meets L1 and reads well at 375 px with no horizontal scroll.
@@ -814,7 +859,7 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
 - Median CPU time per `/api/chunk` is under 10 ms (base64 of the clip for the MERaLiON chat call now runs on every clip). If not, record it (IR-1).
 - Cost stays $0: Workers free plan, no custom domain.
 
-**Definition of done:** standard DoD, plus: the deployed URL is recorded in `reports/slice-5-engineer.md`; the user has used it on both phones; MERaLiON spend is recorded (target: under 20 requests and 2 minutes of counted audio across both phones); Person C's landing page and logo are live.
+**Definition of done:** standard DoD, plus: the deployed URL is recorded in `reports/slice-5-engineer.md` and A has shared it, and the `ACCESS_CODE` (privately), with Person B; the user has used it on both phones; MERaLiON spend is recorded (target: under 20 requests and 2 minutes of counted audio across both phones); Person C's landing page and logo are live from `public/`.
 
 ---
 
@@ -857,21 +902,24 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
 ### Slice 7: Evals (E2) and the E1 cards
 
 **Stories:** US-13 (one command over the 15 clips; score table; MERaLiON vs Whisper particles; MERaLiON's own tone reading vs the final card's; saves cards for E1). Measures M2 (plain English left alone) and M3 (card speed), and produces E1's prepared cards.
-**Depends on:** slice 6. The build needs only the two step-0 samples and `references.example.json`; the real run needs **Person B's deliverables** (D2): the 15 WAVs in `evals/clips/` (never committed; shared privately), `evals/references.json` in the exact schema in the Team split section (merged from B's PR after `node evals/run.js --check` passes), and consent from everyone recorded.
-**User provides:** nothing beyond B's work. Each MERaLiON run spends quota from the normal share: 15 clips × calls per clip (15 or 30 requests), about 2 min of audio per call (so about 4 min counted in `two_call` mode), and the tokens step 0 measured per clip.
+**Who does what:** **Person B writes all the code and tests in this slice** (everything under `evals/`), from day 1, against the Team split contract and fixture JSON, on a `b/...` branch, and runs the real evals. **Person A's part is only integration and review:** A's controller runs the fresh-context `slice-7-reviewer` on B's PR diff (same checks as section 2: spec, tests, coverage, security, conventions); B fixes Critical and Important findings on their branch; A runs `npm test` and `npm run coverage` on the branch merged with `main`, merges it, deploys the current `main`, gives B the go for the MERaLiON run, and walks the demo with the user. There is no Worker-side work left: the only server hook the evals need, `x-asr: whisper`, shipped in slice 4, and `/api/chunk` and `/api/budget` are unchanged. If the review finds that the Worker must change (for example a `ChunkResult` field the evals need), A makes that change in `src/` and B adapts.
+**Depends on:** slice 6 (order), and **Person B's deliverables**: the eval code PR (D2b, may merge any time before this slice starts, since it touches only `evals/`), the 15 WAVs in `evals/clips/` (never committed; shared privately), `evals/references.json` in the exact schema in the Team split section (passing `node evals/run.js --check`), and consent from everyone recorded (D2). The code needs from `main`: `TONES` (slice 1), `toCardModels`/`cardHtml` incl. `unsure` (slices 1–2), `src/client/app.css`, `MERALION_MODE` (slice 3). The real run needs the deployed URL (slice 5) and the `ACCESS_CODE`, shared privately by A.
+**User provides:** the go for B's MERaLiON run after checking `/api/budget`. Each MERaLiON run spends quota from the normal share: 15 clips × calls per clip (15 or 30 requests), about 2 min of audio per call (so about 4 min counted in `two_call` mode), and the tokens step 0 measured per clip.
 
-**Demo script**
-1. Convert clips: `afconvert -f WAVE -d LEI16@16000 -c 1 in.m4a evals/clips/01.wav` (or `ffmpeg -i in.m4a -ac 1 -ar 16000 -sample_fmt s16 evals/clips/01.wav`).
-2. `ACCESS_CODE=… node evals/run.js --base https://catch-no-ball.<subdomain>.workers.dev --asr whisper` (free; the only place Whisper is asked for by name, for the particle comparison), then `--asr meralion` (at least 3.25 min of wall time with one call per clip, 6.5 min with two, because of the gap).
+**Demo script** (Person B runs steps 1–6 on their machine against the deployed app; A and the user look at the results together)
+1. Convert clips: `afconvert -f WAVE -d LEI16@16000 -c 1 in.m4a evals/clips/01.wav` (or `ffmpeg -i in.m4a -ac 1 -ar 16000 -sample_fmt s16 evals/clips/01.wav`). `node evals/run.js --check` passes.
+2. `ACCESS_CODE=… node evals/run.js --base https://catch-no-ball.<subdomain>.workers.dev --asr whisper` (free; the only place Whisper is asked for by name, for the particle comparison), then, after A's go, `--asr meralion` (at least 3.25 min of wall time with one call per clip, 6.5 min with two, because of the gap). `ACCESS_CODE` is set in B's shell only, never in a file.
 3. The console shows: plain English left alone (M2, must be 100%; otherwise "M2 FAIL" and exit code 1), final tone match %, MERaLiON's own tone match % (from `hint`; shows whether the split helps), ambiguity honest %, particles kept %, median and max response time (M3), and any clip where the source differs from the one asked for.
 4. Open `evals/results/<stamp>-meralion-cards.html` in a browser: the prepared E1 cards, one numbered section per clip, with no reference answers on the page.
 5. Open `evals/results/<stamp>-meralion.csv` and fill in `meaning_ok` with a Singaporean teammate.
 6. `node evals/run.js --compare evals/results/<stamp>-whisper.json evals/results/<stamp>-meralion.json` prints and saves the per-clip particle comparison CSV for the presentation chart.
+7. B copies the score table, particle table and response times into `evals/RESULTS.md` (committed in a small PR; later B adds the E1 result there too). C builds the slides from it.
 *Feedback wanted:* Is the table what you want to show at the presentation (Person C builds the slides from it)? Are the E1 cards suitable to show participants (Person B runs E1)?
 
-**Files**
-- Create: `evals/score.js`, `evals/runner.js`, `evals/cards-page.js`, `evals/run.js`, `evals/references.example.json`, `evals/README.md` (consent, conversion, running order: the Whisper comparison run first because it is free, then MERaLiON; MERaLiON budget per run; how E1 uses the cards page).
-- Tests: `test/score.test.js`, `test/runner.test.js`, `test/cards-page.test.js`.
+**Files** (all Person B's; A edits none of them)
+- Create: `evals/score.js`, `evals/runner.js`, `evals/cards-page.js`, `evals/run.js`, `evals/references.example.json`, `evals/fixtures/*.json` (hand-made `ChunkResult`s per the Team split, plus the real replies A shares after slice 3), `evals/README.md` (consent, conversion, running order: the Whisper comparison run first because it is free, then MERaLiON after A's go; MERaLiON budget per run; how E1 uses the cards page), `evals/RESULTS.md` (after the run).
+- Tests: `evals/score.test.js`, `evals/runner.test.js`, `evals/cards-page.test.js` (picked up by `npm test` through the `evals/**/*.test.js` glob).
+- Person A: no files. (`.gitignore` already lists `evals/clips/` and `evals/results/`; `test/all-modules.test.js` already imports `evals/*.js`.)
 
 **Interfaces produced**
 - Reference entry: exactly the schema in the Team split section (Person B writes `evals/references.json`).
@@ -887,12 +935,12 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
   - `formatTable(summary, timings: { medianMs, maxMs }, mismatches: string[]) -> string`
   - `toCsv(rows) -> string`: columns exactly `clip,reference_meaning,reference_tone,meralion_meaning,meralion_tone,app_said,app_meaning,app_tone,tone_ok,meaning_ok`, with `meaning_ok` left empty for a person to fill in (meaning is scored by a person, approved earlier). Fields are quoted per RFC 4180.
   - `compareParticles(whisperRows, meralionRows) -> Array<{ clip, particles, whisper, meralion }>` and its CSV.
-- `evals/runner.js`: `runEval({ clips: Array<{ name, bytes }>, references, asr, callsPerClip, send, sleep, now }) -> Promise<Array<{ clip, reference, result, ms, sourceMismatch }>>`. Sends one clip at a time, with `context: []`. Waits `EVAL_MERALION_GAP_MS × callsPerClip` (13000 or 26000 ms) between clips when `asr === "meralion"`, and 0 for Whisper. `callsPerClip` is 2 for `MERALION_MODE === "two_call"`, else 1. `sourceMismatch` is true when `result.source` differs from `asr` (for example, a MERaLiON run where the guard sent a clip to Whisper). Every clip that has no reference (and every reference that has no clip) is reported, not silently skipped.
+- `evals/runner.js`: `EVAL_MERALION_GAP_MS = 13000`; `runEval({ clips: Array<{ name, bytes }>, references, asr, callsPerClip, send, sleep, now }) -> Promise<Array<{ clip, reference, result, ms, sourceMismatch, error }>>` (`error` is `null`, or the HTTP status or `"network"` for a clip that got no `ChunkResult`; such a clip counts as a miss in every score that applies to it). Sends one clip at a time, with `context: []`. Waits `EVAL_MERALION_GAP_MS × callsPerClip` (13000 or 26000 ms) between clips when `asr === "meralion"`, and 0 for Whisper. `callsPerClip` is 2 for `MERALION_MODE === "two_call"`, else 1. `sourceMismatch` is true when `result.source` differs from `asr` (for example, a MERaLiON run where the guard sent a clip to Whisper). Every clip that has no reference (and every reference that has no clip) is reported, not silently skipped.
 - `evals/cards-page.js`: `cardsPage(rows, css: string) -> string`. A self-contained HTML page that renders each clip's cards with `toCardModels` and `cardHtml` from `src/client/cards.js`, inlines `src/client/app.css`, numbers the clips in reference order, and contains no reference meaning or tone.
-- `evals/run.js` (CLI, coverage-excluded): parses `--base`, `--asr meralion|whisper`, `--compare a.json b.json`, and `--check` (runs `validateReferences` against `evals/references.json` and the files in `evals/clips/`, prints the errors and exits 1 if any; makes no network call; this is what Person B runs before opening their PR); reads `ACCESS_CODE` from the environment; reads `evals/references.json` and `evals/clips/*.wav`; posts to `/api/chunk`, adding `x-asr: whisper` only for `--asr whisper` (`--asr meralion` sends no header, i.e. the app's normal `auto` path); writes `evals/results/<stamp>-<asr>.json`, `.csv` and `-cards.html`; prints `formatTable`; exits 1 if `plainLeftAlone < 100`. Re-runs are served from the KV cache (`cached: true`), so they cost no MERaLiON quota.
+- `evals/run.js` (CLI, coverage-excluded): parses `--base`, `--asr meralion|whisper`, `--limit <n>`, `--compare a.json b.json`, and `--check` (runs `validateReferences` against `evals/references.json` and the files in `evals/clips/`, prints the errors and exits 1 if any; makes no network call; this is what Person B runs before opening their PR); reads `ACCESS_CODE` from the environment (missing → exit 1 before any request); reads `evals/references.json` and `evals/clips/*.wav`; computes calls per clip from `MERALION_MODE` in `src/meralion.js`; posts to `/api/chunk` exactly as in the Team split contract (multipart `audio`, `sessionId`, `context: "[]"`; `x-access-code`; `x-asr: whisper` only for `--asr whisper`, so `--asr meralion` takes the app's normal `auto` path; a 401 stops the run with exit 1); writes `evals/results/<stamp>-<asr>.json`, `.csv` and `-cards.html`; prints `formatTable`; exits 1 if `plainLeftAlone < 100`. Re-runs are served from the KV cache (`cached: true`), so they cost no MERaLiON quota.
 
 **Tests**
-- `test/score.test.js`
+- `evals/score.test.js` (fixtures from `evals/fixtures/`)
   - `particlesKept: "lah" counts in "cannot lah" but not in "lahat"`; `case-insensitive ("LOR")`; `1 of 2 found → 0.5`; `no particles → null`.
   - `plainLeftAlone is true for one plain card equal to the transcript`; `false when the clip was marked Singlish`; `false when a meaning or tone would show`; `false for meaning_unavailable or uncaught`; `null for Singlish references`.
   - `tone matches the reference`; `an unsure sentence matches if either reading has the reference tone`; `null for plain references`.
@@ -903,21 +951,23 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
   - `toCsv has the exact header and an empty meaning_ok column, and quotes commas and quotes`.
   - `formatTable shows "M2 FAIL" when plainLeftAlone is below 100`.
   - `compareParticles pairs clips by name`.
-- `test/runner.test.js` (fake `send`, recording `sleep`, fake clock)
+- `evals/runner.test.js` (fake `send`, recording `sleep`, fake clock)
   - `sends clips in reference order, one at a time`.
   - `waits 13000 ms between MERaLiON clips at one call per clip, 26000 ms at two, and 0 for Whisper` (sleep calls `[13000, 13000]` / `[26000, 26000]` for 3 MERaLiON clips; none for Whisper).
   - `records ms per clip from the clock`; `flags sourceMismatch when meralion was asked for and whisper answered`.
   - `reports clips without references and references without clips`.
-- `test/cards-page.test.js`: `contains every clip's cards in order`; `does not contain any reference meaning`; `does not contain MERaLiON's unchecked reading`; `escapes model text`; `inlines the CSS`.
+  - `a send that rejects or returns a non-200 is recorded as that clip's error and the run continues`.
+- `evals/cards-page.test.js`: `contains every clip's cards in order`; `does not contain any reference meaning`; `does not contain MERaLiON's unchecked reading`; `escapes model text`; `inlines the CSS`.
 
 **Acceptance criteria**
 - One command prints the E2 table, including the M2 check, MERaLiON's tone vs the final card's, and the particle comparison input (US-13).
 - `node evals/run.js --check` validates Person B's references and clips without any network call.
 - Any plain-English miss fails the run (exit code 1) (M2).
 - The E1 cards page needs no network and uses no MERaLiON quota (E1 rules).
-- `evals/clips/` and `evals/results/` are gitignored; only `references.example.json`, `references.json` and code are committed.
+- `evals/clips/` and `evals/results/` are gitignored; only `references.example.json`, `references.json`, `fixtures/`, `RESULTS.md`, code and tests are committed.
+- B's PR touches only `evals/`; every `evals/*.js` except `run.js` is covered (no file under 60% lines), and the repo-wide gate still passes.
 
-**Definition of done:** standard DoD, plus: a 2-clip Whisper run against local dev printed the table and wrote the CSV and cards page; once Person B's clips and references arrive, the full Whisper and MERaLiON runs are done and their summaries are pasted into `reports/slice-7-engineer.md` (or a follow-up report if the clips come later).
+**Definition of done:** standard DoD (with the reviewer's findings addressed by B), plus: a 2-clip Whisper smoke run (`--asr whisper --limit 2`) against the deployed app printed the table and wrote the CSV and cards page; once B's clips and references are in, the full Whisper and MERaLiON runs are done and their summaries are in `evals/RESULTS.md`; A records the review, the merge and the run's MERaLiON spend (from `/api/budget`) in `reports/slice-7-integration.md`.
 
 ---
 
@@ -964,7 +1014,7 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
 
 **Definition of done:** standard DoD, plus: the user has tried airplane mode on both the iPhone and the Android phone against the deployed app.
 
-**After slice 8, the release check** (controller and user, day 6): `npm test` and `npm run coverage` pass on `main`; all four secrets are set (`npx wrangler secret list`); `/api/budget` shows at least the demo reserve left (900 s of audio, 250 requests, 25,000 tokens), after adding the local development usage from the engineer reports (IR-7), and MERaLiON's own console agrees if it shows usage; the presenter's phone has opened the demo link and produced one MERaLiON card with no "Backup mode"; the landing page and app work on both the iPhone (Safari) and the Android phone (Chrome); the 60 s demo script from PRD section 8 has been rehearsed once; Person C's landing page and logo are live; Person B's E1 result is in; the video (Person C's script) is recorded.
+**After slice 8, the release check** (controller and user, day 6): `npm test` and `npm run coverage` pass on `main`; all four secrets are set (`npx wrangler secret list`); `/api/budget` shows at least the demo reserve left (900 s of audio, 250 requests, 25,000 tokens), after adding the local development usage from the engineer reports (IR-7), and MERaLiON's own console agrees if it shows usage; the presenter's phone has opened the demo link and produced one MERaLiON card with no "Backup mode"; the landing page and app work on both the iPhone (Safari) and the Android phone (Chrome); the 60 s demo script from PRD section 8 has been rehearsed once; Person C's landing page and logo are live; Person B's E1 result is in `evals/RESULTS.md`; the video (Person C's) is recorded.
 
 ---
 
@@ -973,7 +1023,7 @@ Every later slice ends its demo with `npx wrangler deploy`, so the user can test
 Start only if slices 1–8 are done, tested and accepted.
 
 **Stories:** US-14 (term sheet, A9), US-15 (manifest and icon, L2).
-**Depends on:** slice 8. **User provides:** nothing.
+**Depends on:** slice 8; for the home-screen half, **Person C's** `public/manifest.webmanifest`, `public/icon-180.png` and the three `<head>` tags in `public/index.html` (D5, contract in the Team split). If C's files are not in, the term sheet half ships alone and the manifest tests stay `todo`. **User provides:** nothing.
 
 **Demo script**
 1. Say or type the demo sentence, then tap the underlined *siam*: a small sheet shows "siam", a gloss like "skip / avoid", and **Learn more**, which opens `https://singlishdict.app/?q=siam` in a new tab.
@@ -981,22 +1031,21 @@ Start only if slices 1–8 are done, tested and accepted.
 3. On the iPhone (Safari): Share → Add to Home Screen; on the Android phone (Chrome): ⋮ → Add to Home screen. The icon and name are "Catch No Ball", and opening it goes straight to the app, full screen.
 
 **Files**
-- Create: `src/manifest.js`. `src/pages/icon-180.png` is **delivered by Person C** (made once from their `logo.svg`, e.g. `qlmanage -t -s 180 -o . src/pages/logo.svg`, then renamed; committed as a binary, so there is still no build step).
-- Modify: `src/client/cards.js` (`learnMoreUrl`, `termSheetModel`), `src/client/app.js` (sheet), `src/pages/app.html` (`<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/icon-180.png">`, `theme-color`); the same three tags in `landing.html` are added **by Person C** in a small PR (C owns that file), `src/router.js` (`GET /manifest.webmanifest` as `application/manifest+json`; `GET /icon-180.png` as `image/png`), `src/index.js`, `wrangler.toml` (`[[rules]] type = "Data"`, `globs = ["**/*.png"]`).
-- Tests: extend `test/cards.test.js`, `test/router.test.js`, `test/pages.test.js`; create `test/manifest.test.js`.
+- **Owned by Person C (front-end half):** `public/manifest.webmanifest`, `public/icon-180.png` (made once from `public/logo-mark.svg`, committed as a binary, so there is still no build step) and the three tags in `public/index.html`. They are static assets: no route, no `index.js` import and no wrangler rule is needed (`.webmanifest` is served as `application/manifest+json`, `.png` as `image/png`).
+- Modify (Person A, Worker half): `src/client/cards.js` (`learnMoreUrl`, `termSheetModel`), `src/client/app.js` (sheet), `src/pages/app.html` (`<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/icon-180.png">`, `theme-color`). No change to `src/router.js`, `src/index.js` or `wrangler.toml`.
+- Tests: extend `test/cards.test.js`, `test/pages.test.js` (the manifest checks below, `todo` until C's files exist).
 
 **Interfaces**
 - `learnMoreUrl(term) -> string`: `"https://singlishdict.app/?q=" + encodeURIComponent(term)`. Link out only; never fetch, scrape or send that site's content to a model (its terms forbid it).
 - `termSheetModel({ term, gloss, known }) -> { title, body, link }`: `body` is the gloss when `known`, else `COPY.newToMe`.
-- `src/manifest.js`: `MANIFEST = { name: "Catch No Ball", short_name: "Catch No Ball", start_url: "/app", display: "standalone", background_color, theme_color, icons: [{ src: "/logo.svg", sizes: "any", type: "image/svg+xml" }, { src: "/icon-180.png", sizes: "180x180", type: "image/png" }] }`.
+- `public/manifest.webmanifest` (Person C): exactly the fields in the Team split contract (`start_url: "/app"`, `display: "standalone"`, icons `/logo-mark.svg` and `/icon-180.png`).
 
 **Tests**
 - `learnMoreUrl("siam") === "https://singlishdict.app/?q=siam"`; `learnMoreUrl("can or not") === "https://singlishdict.app/?q=can%20or%20not"`.
 - `termSheetModel shows the gloss for a known term and "New to me" plus the link for an unknown one`.
 - `markTerms puts data-term on each underlined term so the sheet can find it`.
-- `the manifest has name, short_name, start_url "/app", display "standalone" and both icons`.
-- `GET /manifest.webmanifest → application/manifest+json`; `GET /icon-180.png → image/png`.
-- `app.html and landing.html link the manifest and the apple-touch-icon`.
+- `test/pages.test.js`: `public/manifest.webmanifest parses as JSON with name, short_name, start_url "/app", display "standalone" and both icons`; `public/icon-180.png starts with the PNG signature and is 180×180 (IHDR)`; `app.html and public/index.html link the manifest and the apple-touch-icon and have a theme-color meta`.
+- Deployed check in the demo: `curl -sI …/manifest.webmanifest` shows `application/manifest+json`.
 
 **Acceptance criteria:** US-14 and US-15 "done when" from the PRD; no request is ever made to singlishdict.app by our code.
 
@@ -1025,11 +1074,14 @@ PRD risks keep their PRD numbers (R1–R11). Risks this plan adds are numbered I
 | IR-2 | iOS stops audio when the screen locks or the tab is backgrounded. | Live demo. | Wake Lock request on Listen; the demo script tells the presenter to keep the screen on; checked on both phones in slice 5. |
 | IR-3 | Noise turns into "Couldn't catch that" cards or invented text. | Glanceability. | Client silence threshold `SILENCE_RMS = 0.01` (tunable after slice 3 feedback); the empty-transcript rule can be switched to "silent" in one line if feedback says so. |
 | IR-4 | OpenCode Go key limits or monitoring (Q3). | Every card. | At most 2 calls per clip; `passes` is logged in every result so usage can be counted; a 20 s timeout. |
-| IR-5 | Feedback rounds stall the week (9 checkpoints). | Schedule. | Demo scripts are short (about 5 min each); slices 5 and 6 may be merged; slice 9 is optional; B and C work in parallel on their own files. |
+| IR-5 | Feedback rounds stall the week (9 checkpoints). | Schedule. | Demo scripts are short (about 5 min each); slices 5 and 6 may be merged; slice 9 is optional; B and C code in parallel in their own folders from day 1, and slice 7's code is B's, so A's slice 7 round is review and integration only. |
 | IR-6 | A model rewrites a plain-English sentence in a mixed clip. | M2. | `enforceVerbatim` shows only exact transcript spans and drops a plain sentence it can't match; a MERaLiON reading never sets `hasSinglish`; evals fail on any plain miss. |
 | IR-7 | Two guard counters, one MERaLiON quota. The local guard (`.wrangler/state`) and the deployed guard count separately, and each allows 5 a minute, but MERaLiON's limits are per account. | Budget, rate. | Keep local spend small and logged per slice; the release check adds local usage to the deployed counter; MERaLiON 429s go to the Whisper fallback (from slice 4); never delete `.wrangler/state`. |
 | IR-8 | MERaLiON is slower or less available than Whisper, and there is no Whisper-first mode to hide it. | Card speed, demo. | User's decision: MERaLiON is the main model. The fallback covers errors and refusals; MERaLiON's response time is recorded in step 0 and slice 7 (M3). |
-| IR-9 | Teammates' pieces arrive late (C's landing page and logo for slice 5; B's clips and references for slice 7) or break the build. | Slices 5 and 7. | Placeholders let slices 5 and 7 build and deploy; the contracts are tests (`test/pages.test.js`, `node evals/run.js --check`) the teammates run before their PRs; B and C touch only their own files. |
+| IR-9 | Teammates' pieces arrive late (C's landing page for slice 5; B's eval code, clips and references for slice 7; C's manifest and icon for slice 9) or break the build. | Slices 5, 7, 9. | Folder ownership: B and C touch only `evals/` and `public/`, so their PRs can't break A's code, and A's slices never wait on them to build. Slice 5 deploys without C's page (`/` 404s until it lands); the landing and manifest tests are `todo` until C's files exist. The contracts are tests (`test/pages.test.js`, `node evals/run.js --check`, `npm run coverage`) the teammates run before their PRs. B starts the eval code on day 1 with fixtures, so only the clips are late-sensitive. |
+| IR-10 | A file in `public/` shadows a Worker route (for example `public/app.html` replacing the app), or C adds a script or external URL to a static page. | `/app`, privacy. | `run_worker_first = ["/app", "/api/*", "/client/*"]`; `test/config.test.js` rejects reserved names in `public/`; `test/pages.test.js` rejects `<script>` and external URLs in C's pages; A reviews every `public/` PR. |
+| IR-11 | B's eval code drifts from the real `ChunkResult` (fixtures written by hand), so scores are wrong on the real run. | Slice 7, presentation numbers. | The shapes are fixed in section 1 and A tells B before any change; A shares real `/api/chunk` replies after slice 3 for B's fixtures; the 2-clip Whisper smoke run against the deployed app before the full run; `plainLeftAlone` and the cards page use A's real `toCardModels`/`cardHtml`, not a copy; the fresh-context `slice-7-reviewer` checks B's PR against this plan. |
+| IR-12 | Someone edits outside their folders, or B and C merge stale branches, and A's push overwrites or conflicts. | Every merge. | Rules in the Team split: shared files are A-only; PRs touch only the owner's folders (A checks the diff's paths before merging); A's session pulls `main` before each push; B and C pull `main` before opening a PR. |
 
 ## 7. Assumptions this plan makes
 
@@ -1045,7 +1097,10 @@ PRD risks keep their PRD numbers (R1–R11). Risks this plan adds are numbered I
 - One request in flight at a time is fast enough: processing a clip (about 5–10 s) is shorter than recording the next one (15 s).
 - **(my calls)** A retry that fails turns the whole clip into "Meaning unavailable, tap to retry". A plain sentence that can't be matched word for word in a mixed clip is dropped rather than shown reworded. An empty transcript from a non-silent clip shows "Couldn't catch that". Typed text survives a connection drop; audio clips don't. `MAX_TEXT_CHARS = 1000`. The mic-blocked help wording.
 - Subagents do not commit; the controller commits and pushes to `main` after each user OK. Reports go in `./reports/`.
-- Person B's eval clips and references arrive by day 4; E1 participants are booked for day 5–6. Person C's landing page and logo arrive by day 3.
+- Person B's eval code PR, clips and references arrive by day 4; E1 participants are booked for day 5–6. Person C's landing page arrives by day 3 (the logo and icon mark are already in `public/`).
+- Cloudflare Workers static assets (`[assets] directory = "./public"`) are free and unlimited on the Workers free plan and deploy with the Worker in one `npx wrangler deploy`. `run_worker_first` accepts an array of route patterns and `not_found_handling`/`html_handling` default to `"none"`/`"auto-trailing-slash"` (checked in the wrangler 4.158 config schema); `wrangler dev` serves `public/` locally the same way. `.webmanifest` is served as `application/manifest+json` (checked in wrangler's MIME table).
+- Node v22.10 runs B's ES-module tests with `node --test "evals/*.test.js"` before `package.json` exists (checked in a scratch project; the bare folder form `node --test evals/` fails on 22.10). A test glob that matches nothing (`evals/**/*.test.js` before B's first PR) does not fail `npm test` (checked).
+- B and C have Node v22 and `git`; C can preview `public/` with `python3 -m http.server` (preinstalled on macOS with the Xcode command line tools) or any static server.
 - PRD.md (revision 1) still mentions "a setting forces Whisper during development" (B2a). This plan follows the user's later instruction instead: no Whisper in development or demos.
 
 ## 8. Questions only the user can answer
