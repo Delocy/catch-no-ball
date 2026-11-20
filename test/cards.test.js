@@ -100,7 +100,19 @@ test("cardHtml escapes the meaning, the id and an unexpected tone", () => {
 });
 
 test("shouldAutoScroll is true within 48 px of the bottom and false when scrolled further up", () => {
-  assert.equal(shouldAutoScroll({ scrollTop: 500, clientHeight: 400, scrollHeight: 960 }), true);
+  assert.equal(shouldAutoScroll({ scrollTop: 520, clientHeight: 400, scrollHeight: 960 }), true);
   assert.equal(shouldAutoScroll({ scrollTop: 100, clientHeight: 400, scrollHeight: 960 }), false);
   assert.equal(shouldAutoScroll({ scrollTop: 400, clientHeight: 400, scrollHeight: 900 }, 100), true);
+});
+
+test("a pending card shows the typed text and the Translating label, escaped", () => {
+  const html = cardHtml({ kind: "pending", text: "<b>hi</b> lah" }, "p1");
+  assert.match(html, /class="card pending"/);
+  assert.match(html, /id="p1"/);
+  assert.match(html, /&lt;b&gt;hi&lt;\/b&gt; lah/);
+  assert.match(html, /Translating/);
+});
+
+test("an unknown card kind renders as an empty string", () => {
+  assert.equal(cardHtml({ kind: "mystery" }, "z"), "");
 });
