@@ -3,7 +3,7 @@
 // queue.js, api.js, wav.js, clipper.js, mic.js.
 import { createApi } from "./api.js";
 import { createClipQueue } from "./queue.js";
-import { contextAfter, withContext } from "./session.js";
+import { contextAfter, sendContext, retryOf } from "./session.js";
 import { cardHtml, renderResult, shouldAutoScroll, fixItem } from "./cards.js";
 import { clipToSend } from "./wav.js";
 import { createClipper } from "./clipper.js";
@@ -17,9 +17,11 @@ const input = document.getElementById("text");
 const listenBtn = document.getElementById("listen");
 const banner = document.getElementById("banner");
 const micHelp = document.getElementById("mic-help");
+banner.querySelector(".translating-text").textContent = COPY.translating;
+banner.querySelector(".tell").textContent = COPY.tellTable;
 
 let sessionId = crypto.randomUUID(); // a new one per Listen
-let context = []; // last few lines, copied into each item when it is created
+let context = []; // last few lines; a first try reads it when sent, a retry keeps its own
 const retryable = new Map(); // card id -> the original item, for "tap to retry"
 let nextId = 1;
 let rec = null; // the live recording, or null
@@ -38,20 +40,23 @@ function insert(html, replaceId) {
 }
 
 const queue = createClipQueue({
-  send: (item) =>
-    item.kind === "clip"
+  send(item) {
+    item.context = sendContext(item, context); // kept on the item so a retry re-sends it (M6)
+    return item.kind === "clip"
       ? api.sendClip({ wav: item.wav, sessionId: item.sessionId, context: item.context })
-      : api.sendText({ text: item.text, sessionId: item.sessionId, context: item.context }),
+      : api.sendText({ text: item.text, sessionId: item.sessionId, context: item.context });
+  },
   onResult(item, result, error) {
     const out = renderResult(item, result, error);
     insert(out.html, item.cardId);
-    context = contextAfter(context, error ? undefined : result, { retry: item.retry });
-    if (out.retryable) retryable.set(item.cardId, item);
+    // inContext: this line already entered the context when its first try failed (M5, m1).
+    context = contextAfter(context, error ? undefined : result, { retry: Boolean(item.inContext) });
+    if (out.retryable) retryable.set(item.cardId, retryOf(item, result, error));
     else retryable.delete(item.cardId);
   },
 });
 
-// item already carries its context (withContext); replaceId puts it in place of an old card.
+// replaceId puts the item's card in place of an old one.
 function enqueue(item, replaceId) {
   const cardId = replaceId || `card-${nextId++}`;
   insert(cardHtml({ kind: "pending", text: item.text || "" }, cardId), replaceId);
@@ -63,15 +68,15 @@ form.addEventListener("submit", (e) => {
   const item = fixItem(null, input.value);
   if (!item) return;
   input.value = "";
-  enqueue(withContext({ kind: "text", text: item.text }, context));
+  enqueue({ kind: "text", text: item.text });
 });
 
 cardsEl.addEventListener("click", (e) => {
   const card = e.target.closest(".card.unavailable");
   if (!card || !retryable.has(card.id)) return;
-  const original = retryable.get(card.id);
+  const original = retryable.get(card.id); // carries its first context and whether to append
   retryable.delete(card.id);
-  enqueue({ ...original, retry: true }, card.id); // same context as the first try (M6)
+  enqueue(original, card.id);
 });
 
 cardsEl.addEventListener("submit", (e) => {
@@ -79,7 +84,7 @@ cardsEl.addEventListener("submit", (e) => {
   if (!fix) return;
   e.preventDefault();
   const item = fixItem(fix.dataset.cardId, fix.elements.text.value);
-  if (item) enqueue(withContext(item, context), item.replaces);
+  if (item) enqueue(item, item.replaces);
 });
 
 function showHelp(text) {
@@ -96,7 +101,7 @@ function setListening(on) {
 
 function onClip(samples, rate) {
   const wav = clipToSend(samples, rate);
-  if (wav) enqueue(withContext({ kind: "clip", wav }, context));
+  if (wav) enqueue({ kind: "clip", wav });
 }
 
 async function start() {

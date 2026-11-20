@@ -120,3 +120,13 @@ test("a retry after a network error appends on success; a retry after meaning_un
   assert.deepEqual(contextAfter(["a"], ok, { retry: enteredContext(undefined, new Error("net")) }), ["a", "x lah"]);
   assert.deepEqual(contextAfter(["a", "x lah"], ok, { retry: enteredContext({ status: "meaning_unavailable", transcript: "x lah" }) }), ["a", "x lah"]);
 });
+
+import { retryOf } from "../src/client/session.js";
+
+test("retryOf: a retry re-sends the first context, and knows whether its line is already in context", () => {
+  const item = { kind: "clip", context: ["x"], cardId: "c1" };
+  assert.deepEqual(retryOf(item, { status: "meaning_unavailable", transcript: "t" }), { ...item, retry: true, inContext: true });
+  assert.deepEqual(retryOf(item, undefined, new Error("net")), { ...item, retry: true, inContext: false });
+  const second = retryOf({ ...item, retry: true, inContext: true }, undefined, new Error("net"));
+  assert.equal(second.inContext, true); // still in context from the first failure
+});

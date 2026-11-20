@@ -122,10 +122,13 @@ export function shouldAutoScroll({ scrollTop, clientHeight, scrollHeight }, slac
 
 // What to show when a queued item finishes. An API error becomes the "meaning unavailable"
 // card for the typed text (a clip has no words yet, so its card shows only the retry). Ids: the first card replaces the pending card, others are id-1, id-2.
+// A 4xx on a clip (bad_audio, too_long) can never succeed on retry, so it asks the user to type.
 export function renderResult(item, result, error) {
-  const models = error
-    ? toCardModels({ status: "meaning_unavailable", transcript: item.text ?? "" })
-    : toCardModels(result);
+  const models = !error
+    ? toCardModels(result)
+    : item.kind === "clip" && error.kind === "bad_request"
+      ? [{ kind: "uncaught" }]
+      : toCardModels({ status: "meaning_unavailable", transcript: item.text ?? "" });
   return {
     html: models.map((m, i) => cardHtml(m, i === 0 ? item.cardId : `${item.cardId}-${i}`)).join(""),
     retryable: models.some((m) => m.kind === "unavailable"),

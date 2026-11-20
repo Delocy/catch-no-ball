@@ -24,3 +24,24 @@ export function contextAfter(prev, result, { retry = false, keep = CONTEXT_KEEP 
 export function withContext(item, context) {
   return { ...item, context: Array.isArray(context) ? [...context] : [] };
 }
+
+// The context a queued item is sent with (review I3). A first try reads the live context when it
+// is sent, so it sees every earlier line (the queue sends one at a time, after the previous
+// result). A retry re-sends the context its first try had (M6).
+export function sendContext(item, live) {
+  if (item && item.retry && Array.isArray(item.context)) return [...item.context];
+  return Array.isArray(live) ? [...live] : [];
+}
+
+// Whether a failed first try already put its line in the context (m1): only a
+// meaning_unavailable result with words did. A retry of anything else appends when it succeeds.
+export function enteredContext(result, error) {
+  return Boolean(!error && result && result.status === "meaning_unavailable" &&
+    typeof result.transcript === "string" && result.transcript.trim());
+}
+
+// The item to re-push when "tap to retry" is tapped: same first context (retry), and whether
+// its result should be kept out of the context because the line is already there (inContext).
+export function retryOf(item, result, error) {
+  return { ...item, retry: true, inContext: Boolean(item.inContext) || enteredContext(result, error) };
+}
