@@ -6,6 +6,7 @@
 **Tagline:** *For when you catch no ball.*
 
 **Changes**
+- **2026-11-20, revision 3: transcript-only MERaLiON (user decision, after the step-0 check).** The hosted MERaLiON API serves only MERaLiON-3-3B-ASR-CTM, and its audio chat returns errors, so option B is replaced by transcript-only (formerly option A): MERaLiON transcribes each clip, and OpenCode Go produces the meaning, tone and terms. There is no MERaLiON reading or hint, and no 10B model. Budget redone with the measured cost: one call per clip, 15 s clips, about 345 tokens per clip. R9 and R10 are resolved; R3 is partly resolved; R11 and the E2 MERaLiON-vs-final-card tone score are dropped; a new note records that the 3B ASR turned "lah" into "leh" on a synthetic voice (R1 with real voices is still the real test). Deploying is deferred: everything runs locally for now, and the deploy requirements are kept for later. Updated: sections 1, 3 (E2), 4, 5 (US-10), 6 (A3, L1, B2–B6, errors), 7, 8, 9.
 - **2026-11-20, revision 2: no access code and no demo key (user decision).** US-2 and US-12 are removed (numbers kept so IMPL.md references hold), ACCESS_CODE and DEMO_KEY are gone, the 75/25 demo split and reserved minutes are dropped so the whole free-tier allowance is usable, and a new risk R12 covers the public link. The rate guard and monthly limits stay; at the limit the app falls back to Whisper with "Backup mode".
 - **2026-11-20, revision 1: how the work is split between the models (the user chose "option B").** MERaLiON (MERaLiON-3 10B wanted) now hears each clip and returns the exact transcript **plus its own reading of meaning and tone**. OpenCode Go checks that reading, adds conversation context and writes the final card; it also handles typed text alone. Whisper is only the fallback, and then OpenCode Go works from the transcript alone. Whether the hosted API serves MERaLiON-3 10B and accepts audio in chat is unconfirmed; if not, we fall back to transcript-only MERaLiON (the old approach). Budget redone: one combined MERaLiON call per clip keeps ~15 s clips; two calls per clip would need ~25 s clips. Updated: sections 1, 3 (E2), 4, 5 (US-10, US-11), 6 (A3, L1, B2–B6, errors), 7, 8, 9.
 
@@ -42,7 +43,7 @@ Labels used below:
 1. With the cards, a newcomer understands 8 of 10 Singlish office sentences correctly, tone included (section 3).
 2. Plain-English sentences are never reworded (section 3).
 3. A card arrives soon enough after the sentence that the newcomer can still follow the conversation.
-4. A working, deployed demo that meets every course requirement and costs nothing.
+4. A working demo that meets every course requirement and costs nothing. **Deploying is deferred (2026-11-20): for now everything runs locally.** Deploy requirements stay below for later.
 
 **Non-goals**
 - Anything outside Singlish in Singapore offices: no lunch, hawker or family settings, and no Mandarin/Malay/Hokkien modes.
@@ -99,12 +100,11 @@ An eval script sends each clip through the real pipeline and prints a score tabl
 | Ambiguous clips get two readings, not one confident guess | Script |
 | Meaning matches the reference | A person |
 | Particles kept (lah, lor, meh, siam...): MERaLiON vs Whisper on the same clips | Script, shown as a chart in the presentation |
-| Tone: MERaLiON's own reading vs the final card after OpenCode Go (shows whether the split helps; both come from the same run) | Script |
 
 - Eval audio stays out of git and is shared privately. Only the reference text file is committed (approved earlier).
 - Everyone recorded agrees to their clips being sent to MERaLiON (A*STAR) and Whisper (Cloudflare).
-- Clips are recorded with the intended tone of voice, since MERaLiON now reads tone from the audio.
-- One eval run uses about 2 minutes of audio **(guess: about 8 s per clip)**. With one MERaLiON call per clip it takes at least 3 minutes (15 calls at 5 a minute); with two calls per clip, at least 6 minutes.
+- Clips are recorded with the intended tone of voice, so the transcript's wording and particles carry the tone (MERaLiON gives words only; OpenCode Go decides the tone).
+- One eval run uses about 2 minutes of audio **(guess: about 8 s per clip)**. With one MERaLiON call per clip it takes at least 3 minutes (15 calls at 5 a minute) and about 5,200 tokens (15 clips at ~345 tokens).
 
 ### M2 also has automated tests
 
@@ -118,12 +118,12 @@ An eval script sends each clip through the real pipeline and prints a score tabl
 | Requirement | How it is met | Where |
 |---|---|---|
 | Product thinking first | PRODUCT_BRIEF.md, then this PRD, then IMPL.md | Done / this doc |
-| AI back-end on the course's OpenCode Go key, not a chatbot over features | Every card goes through OpenCode Go. It checks MERaLiON's reading against the conversation so far, decides whether each sentence has Singlish, and writes the final meaning, tone (fixed list), terms and, when unsure, two readings. It handles typed text on its own. There is no chat box. | US-4 to US-8, B4 |
+| AI back-end on the course's OpenCode Go key, not a chatbot over features | Every card goes through OpenCode Go. Given MERaLiON's transcript and the conversation so far, it decides whether each sentence has Singlish and writes the final meaning, tone (fixed list), terms and, when unsure, two readings. It handles typed text on its own. There is no chat box. | US-4 to US-8, B4 |
 | Landing page with product name and logo | `/` shows the name, a hand-drawn logo, tagline and an example card | US-1, L1 |
-| "Something new" the course hasn't taught | **MERaLiON** (MERaLiON-3 10B wanted), A*STAR's Singapore-built audio model, as the main model for understanding Singlish speech: it hears the clip and gives the exact transcript plus its own reading of meaning and tone of voice, which a text-only model can't hear. Kept even if it drops particles; reported honestly with the MERaLiON vs Whisper chart and the MERaLiON-vs-final-card tone score. If audio understanding isn't available, MERaLiON is used for transcripts only, and the presentation says so. | B2, E2 |
+| "Something new" the course hasn't taught | **MERaLiON**, A*STAR's Singapore-built speech model (the hosted API serves MERaLiON-3-3B-ASR-CTM), as the speech-to-text step for Singlish: it hears the clip and gives the transcript. OpenCode Go then produces the meaning, tone and terms from that transcript. Kept even if it drops particles; reported honestly with the MERaLiON vs Whisper particle chart. The presentation says plainly that MERaLiON is used for transcripts only. | B2, E2 |
 | Video demo | A narrated click-through, recorded with QuickTime | Day 6 |
 | Live presentation | Demo, the E1 before/after result, and the particle chart | Demo day |
-| Deploy online (optional) | Deployed on a free `*.workers.dev` address | Day 6 |
+| Deploy online (optional) | **Deferred (2026-11-20): everything runs locally for now** (`wrangler dev`). When asked for later: a free `*.workers.dev` address | Later (was day 6) |
 
 ---
 
@@ -179,7 +179,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 *Done when:* the app switches to Whisper by itself and shows a small "Backup mode" label that stays visible while backup is in use; in backup mode, cards are written by OpenCode Go from the transcript alone.
 
 **US-11. Retry when the meaning couldn't be worked out.** As a newcomer, I can still see what was said if the OpenCode Go step fails.
-*Done when:* the card shows the transcript with "Meaning unavailable, tap to retry"; tapping retries that sentence only. MERaLiON's unchecked reading is not shown on its own (my call: it hasn't been validated, and MERaLiON is not safety-aligned).
+*Done when:* the card shows the transcript with "Meaning unavailable, tap to retry"; tapping retries that sentence only. The transcript is shown as is; meaning and tone come only from OpenCode Go.
 
 **US-12. Removed (2026-11-20).** No demo key; the whole free-tier allowance is usable. Number kept so references hold.
 
@@ -202,7 +202,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 |---|---|---|
 | A1 | Setting is fixed to **Office meeting** and sent to the model as context (for example "confirm" means "definitely"). No setting picker. | US-4 |
 | A2 | Listen / Stop, the always-visible "Translating" label, and the reminder to tell the table. | US-3 |
-| A3 | Records clips of about 15 s (about 25 s if MERaLiON needs two calls per clip, see B2) and sends each to the Worker in the format MERaLiON accepts (16 kHz mono, at most 30 s). Clips are sent in order; recording continues while earlier clips are processed. | US-4 |
+| A3 | Records clips of about 15 s (one MERaLiON call per clip, see B2) and sends each to the Worker in the format MERaLiON accepts (16 kHz mono wav, at most 30 s per chunk). Clips are sent in order; recording continues while earlier clips are processed. | US-4 |
 | A4 | Card layout: what was said (terms underlined), what it meant (one short sentence), one tone label from the fixed list. | US-4 |
 | A5 | Plain-English sentences: one faded line, transcript verbatim, nothing else. | US-5 |
 | A6 | Two readings when unsure. | US-6 |
@@ -214,7 +214,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 
 | ID | Requirement | Story |
 |---|---|---|
-| L1 | At `/`: name, logo (a speech bubble with a small ball inside, hand-drawn SVG), tagline, one-paragraph explanation, an example card, an "Open the app" button, and a privacy line: "Audio is sent to A*STAR's MERaLiON service to be transcribed and understood, and is never stored by us." | US-1 |
+| L1 | At `/`: name, logo (a speech bubble with a small ball inside, hand-drawn SVG), tagline, one-paragraph explanation, an example card, an "Open the app" button, and a privacy line: "Audio is sent to A*STAR's MERaLiON service to be transcribed, and is never stored by us." | US-1 |
 | L2 | (Should) Web app manifest and icon. | US-15 |
 
 ### Back-end (one Cloudflare Worker)
@@ -222,14 +222,14 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | ID | Requirement |
 |---|---|
 | B1 | One Worker serves the landing page, the app and the API. |
-| B2 | **Understanding the audio (MERaLiON, main).** For each clip, MERaLiON (MERaLiON-3 10B wanted) returns the exact Singlish transcript plus its own reading of the meaning and the tone of voice. **Preferred: one call per clip** that returns both (audio sent to its chat endpoint). If the API needs a separate transcription call and understanding call, clips go to about 25 s so two calls per clip stay under 5 a minute. **If audio chat isn't available or MERaLiON-3 10B isn't served,** MERaLiON gives the transcript only (the old approach) and OpenCode Go reads tone from words alone; the presentation says so. Which of the three applies is decided at the first speech slice (R3, R9). |
-| B2a | **Fallback (Whisper on Workers AI)** only when MERaLiON is unavailable, at its rate limit or over budget. Cards then come from OpenCode Go on the transcript alone, and "Backup mode" shows. |
+| B2 | **Transcribing the audio (MERaLiON, main).** For each clip, one call to MERaLiON (`MERaLiON/MERaLiON-3-3B-ASR-CTM`, the only model the hosted API serves) returns the exact Singlish transcript. Request: `POST /v1/audio/transcriptions` with JSON `{"audio_url": "data:audio/wav;base64,..."}`, header `X-API-Key`; the transcript is in `choices[0].message.content`. **Transcript-only (user decision, 2026-11-20):** MERaLiON's audio chat doesn't work (it returns errors), so there is no MERaLiON reading or hint, and no 10B model; OpenCode Go produces the meaning, tone and terms from the transcript. The presentation says so. Settings: `MERALION_MODE="transcript_only"`, `CLIP_SECONDS=15`. Measured in the step-0 check (R3, R9, R10 resolved). |
+| B2a | **Fallback (Whisper on Workers AI)** only when MERaLiON is unavailable, at its rate limit or over budget. Cards still come from OpenCode Go on the transcript alone (as they do with MERaLiON), and "Backup mode" shows. |
 | B3 | **Rate guard.** Never more than 5 MERaLiON requests in any minute, counting every call. Over the limit, use Whisper rather than wait. The count must be accurate across requests (a Durable Object, approved earlier). |
-| B3a | **Monthly budget.** The same counter tracks this calendar month's MERaLiON requests, audio and tokens against the free-tier limits, and the whole allowance is usable. Whichever runs out first sends sessions to Whisper, and "Backup mode" shows. |
+| B3a | **Monthly budget.** The same counter tracks this calendar month's MERaLiON requests, audio and tokens (about 345 per clip, measured) against the free-tier limits, and the whole allowance is usable. Whichever runs out first sends sessions to Whisper, and "Backup mode" shows. |
 | B3b | Removed (2026-11-20): no access code. The only secrets are OPENCODE_API_KEY and MERALION_API_KEY. |
-| B4 | **Final card (OpenCode Go, course key).** Input: MERaLiON's transcript and reading (or the Whisper transcript, or typed text), the setting, and the previous 2–3 sentences. It checks MERaLiON's reading against that context and returns, per sentence: what was said (MERaLiON's transcript, unchanged), whether it has Singlish, the meaning, a tone from the fixed list, whether it is confident, up to two alternative readings, and the Singlish terms with glosses. MERaLiON's reading never reaches the screen without this step. The Worker checks the reply's shape; a malformed reply counts as an OpenCode Go error (US-11). Every call sends a session id and an app-specific user-agent. |
+| B4 | **Final card (OpenCode Go, course key).** Input: the transcript (MERaLiON's, or Whisper's, or typed text), the setting, and the previous 2–3 sentences. It returns, per sentence: what was said (the transcript, unchanged), whether it has Singlish, the meaning, a tone from the fixed list, whether it is confident, up to two alternative readings, and the Singlish terms with glosses. Tone comes from the words and particles alone, so the tone is OpenCode Go's reading and nothing else. The Worker checks the reply's shape; a malformed reply counts as an OpenCode Go error (US-11). Every call sends a session id and an app-specific user-agent. |
 | B5 | The previous clip's last sentence is sent as context, so a sentence cut in half by a clip boundary can be joined up. |
-| B6 | **MERaLiON reply cache** in KV (transcript and reading), keyed by an audio fingerprint, kept 7 days at most, so eval re-runs don't spend MERaLiON quota. Audio itself is never stored. |
+| B6 | **MERaLiON reply cache** in KV (transcript), keyed by an audio fingerprint, kept 7 days at most, so eval re-runs don't spend MERaLiON quota. Audio itself is never stored. |
 | B7 | Secrets come only from the environment, never from code or config files in git. |
 
 ### Error states the user sees
@@ -240,7 +240,6 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | Silence | Nothing | US-7 |
 | Network down or Worker unreachable | Banner: "Subtitles paused, reconnecting". Cards stay. Then "Missed some speech while offline" if audio was lost. | US-9 |
 | MERaLiON at its rate limit, over budget, or erroring | Switches to Whisper, "Backup mode" label; cards from the transcript alone | US-10 |
-| MERaLiON returns a transcript but no usable reading | Normal card, written by OpenCode Go from the transcript alone (no label: speech was still understood by MERaLiON) | US-4 |
 | Both speech recognisers fail | Card: "Couldn't catch that" + text box | US-7 |
 | OpenCode Go erroring or malformed reply | Transcript + "Meaning unavailable, tap to retry" | US-11 |
 | Model unsure after one retry | "Could mean: … or …" | US-6 |
@@ -253,10 +252,10 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 
 | Area | Requirement |
 |---|---|
-| **Phone-first** | Works in Safari on iPhone and Chrome on Android, portrait, one-handed. Large type, high contrast, dark mode. HTTPS (needed for the mic) comes with `workers.dev`. |
-| **Speed** | Card within 15 s of the end of its clip, under normal conditions (M3, guess). With ~15 s clips and one MERaLiON call, a card lands roughly 5–15 s after the sentence. With ~25 s clips and two calls, expect longer: the time from sentence to card grows with clip length **(guess, measure in E2)**. |
+| **Phone-first** | Works in Safari on iPhone and Chrome on Android, portrait, one-handed. Large type, high contrast, dark mode. Locally, the mic works on localhost; on a phone over the network it needs HTTPS, which comes with `workers.dev` once we deploy (deferred). |
+| **Speed** | Card within 15 s of the end of its clip, under normal conditions (M3, guess). With ~15 s clips and one MERaLiON call (about 0.6–1.2 s each in step 0) plus one OpenCode Go call, a card lands roughly 5–15 s after the sentence **(guess, measure in E2)**. |
 | **Glanceable** | Meaning is one short sentence. Tone is one word. |
-| **Privacy and consent** | "Translating" label always visible while listening; the user is prompted to tell the table. Audio is never stored. Audio goes to A*STAR (MERaLiON) or Cloudflare (Whisper); transcripts and MERaLiON's readings go to OpenCode Go. Transcripts and readings may sit in the KV cache for up to 7 days; nothing is linked to a person. The landing page says where audio goes. Everyone recorded for evals agrees first. |
+| **Privacy and consent** | "Translating" label always visible while listening; the user is prompted to tell the table. Audio is never stored. Audio goes to A*STAR (MERaLiON) or Cloudflare (Whisper); transcripts go to OpenCode Go. Transcripts may sit in the KV cache for up to 7 days; nothing is linked to a person. The landing page says where audio goes. Everyone recorded for evals agrees first. |
 | **Honest UI** | "Translating" and "Backup mode" are never hidden. Unsure means two readings. |
 | **Free tiers and budget** | $0. Free tiers only; no paid plans, no custom domain. Limits below. |
 | **Test coverage** | Over 80% line coverage, measured with `node --test` coverage on every slice. |
@@ -266,25 +265,25 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 
 | Service | Free limit | How we stay inside it |
 |---|---|---|
-| MERaLiON | 5 requests/min, 1,000 requests/month, 1 hour of audio/month, 100k tokens/month | Rate guard, monthly budget counter, reply cache, short test clips and the typed-text path during development. Clip length depends on calls per clip (below). |
+| MERaLiON | 5 requests/min, 1,000 requests/month, 1 hour of audio/month, 100k tokens/month | Rate guard, monthly budget counter, reply cache, short test clips and the typed-text path during development. |
 | Workers AI Whisper | About 214 audio minutes a day | Automatic backup only. |
 | Cloudflare Workers | 100k requests/day, 10 ms CPU per request | Requests mostly wait on network calls, which isn't CPU time. Audio conversion happens on the phone. |
 | OpenCode Go | Course key; meant for coding agents, traffic is monitored | Keep calls modest: one call per clip, one retry at most. See Q3. |
 
-**Does the MERaLiON budget still hold with option B?** Worked out from the free limits; the per-call cost is not yet measured.
+**Does the MERaLiON budget hold with transcript-only?** Yes. Worked out from the free limits and the step-0 measurement (about 345 tokens per clip).
 
-| MERaLiON calls per clip | Clip length | Calls a minute while listening | Fits 5/min? | Speech per month before the audio cap* | Clips per month before the request cap |
-|---|---|---|---|---|---|
-| 1 (combined: transcript + reading) | ~15 s | 4 | Yes | 60 min | 1,000 (audio cap hits first, at ~240 clips) |
-| 2 (transcribe, then understand), 15 s clips | ~15 s | 8 | **No** | — | — |
-| 2, longer clips | ~25 s | ~4.8 | Yes, barely | 30 min if audio is counted on both calls **(unconfirmed)**, else 60 | 500 |
-| 1 (fallback: transcript only, old approach) | ~15 s | 4 | Yes | 60 min | 1,000 |
+| Item | Value |
+|---|---|
+| MERaLiON calls per clip | 1 |
+| Clip length | 15 s |
+| Calls a minute while listening | 4 (fits 5/min) |
+| Tokens per clip | ~345 (measured; 330 prompt + ~15 out for a short sentence) |
+| Clips per month before the audio cap (1 hour) | ~240 (hits first) |
+| Clips per month before the token cap (100k) | ~290 |
+| Clips per month before the request cap (1,000) | 1,000 |
 
-\* Assumes MERaLiON counts the audio sent on each call.
-
-- **The 15 s clip length holds only with one combined call.** Two calls per clip break the 5-a-minute limit at 15 s; they need ~25 s clips, which delays cards and may halve the usable audio. So the first speech slice should try the one-call form first.
-- **Tokens are the unknown.** 100k tokens a month over ~240 clips is about 400 tokens per clip. If a call with audio costs more than that (audio may be counted as tokens), tokens become the limit before audio does. The first speech slice measures tokens per clip, and the budget counter (B3a) tracks them.
-- **Course events still fit**, assuming the one-call form: an E2 run is ~2 min of audio and 15 calls, so ~10 runs use ~20 min, leaving ~40 min for rehearsals and the demo **(estimates)**.
+- **Audio is the limit, not tokens.** 240 clips use about 83k tokens, under the 100k cap. The budget counter (B3a) still tracks all three.
+- **Course events still fit:** an E2 run is ~2 min of audio, 15 calls and ~5,200 tokens, so ~10 runs use ~20 min, leaving ~40 min for rehearsals and the demo **(estimates)**.
 
 ---
 
@@ -293,9 +292,9 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 ### Chosen approach (engineering owns the detailed design in IMPL.md)
 
 ```
-Phone ── ~15 s clip ──► Worker ──► MERaLiON: exact transcript + its reading of meaning and tone of voice
+Phone ── ~15 s clip ──► Worker ──► MERaLiON: exact transcript only
                           │          └─ unavailable, limit or budget ──► Whisper: transcript only (backup mode)
-                          ├──► OpenCode Go: checks the reading against context, writes the final card
+                          ├──► OpenCode Go: reads the transcript in context, writes the final card
                           │          (Singlish? meaning, tone from fixed list, terms)
                           │          └─ unsure ──► retry with context ──► two readings
                           └──► cards back to the phone
@@ -303,10 +302,11 @@ Phone ── ~15 s clip ──► Worker ──► MERaLiON: exact transcript + 
 Typed text ──► Worker ──► OpenCode Go alone ──► card
 ```
 
-- **Option B, chosen by the user.** MERaLiON hears how something was said, which a text-only model can't, so it gives the first reading. OpenCode Go is the checker and the card writer. If the hosted API can't do audio understanding, MERaLiON drops to transcripts only (option A) and we say so.
+- **Transcript-only, chosen by the user (replaces option B, 2026-11-20).** The hosted API serves only the 3B ASR model and its audio chat doesn't work, so MERaLiON transcribes and OpenCode Go produces the meaning, tone and terms. There is no MERaLiON hint.
 - **Short clips, chosen by the user.** Live streaming was rejected as too risky. A recap after the meeting is the **fallback** if the phone-in-meeting test fails: the same pipeline, with cards shown at Stop instead of live.
 - One Cloudflare Worker on the free plan serves everything (B1).
 - MERaLiON stays the main speech model even if it drops particles.
+- **Deploying is deferred (user, 2026-11-20).** Everything runs locally (`wrangler dev` on localhost:8787) until the user asks. The deploy requirements (free `workers.dev` address, HTTPS for phone mic, secrets set on the Worker) are kept for later.
 
 ### 1-week scope
 
@@ -315,7 +315,7 @@ Typed text ──► Worker ──► OpenCode Go alone ──► card
 | US-1 to US-13 | US-14 tap a term | **Star a term and the "You caught N terms" summary at Stop.** Not in the brief's first version; it's a learning feature, not the core listen → card flow. |
 | Landing page with name and logo | US-15 home-screen shortcut | **Setting picker.** Office meeting is the only setting, so a picker screen adds nothing. |
 | E1 (10 sentences) and E2 (15 clips) | | **Offline clip queue.** Hard to get right in a week; the banner, kept cards and auto-resume cover the user's main worry. |
-| Deploy on `workers.dev`, video, presentation | | **25-clip eval set and comparing two prompts.** Evals stay small: 15 clips, one prompt. Tune the prompt only if E2 shows a problem. |
+| Deploy on `workers.dev` (deferred, run locally for now), video, presentation | | **25-clip eval set and comparing two prompts.** Evals stay small: 15 clips, one prompt. Tune the prompt only if E2 shows a problem. |
 | | | **Remotion video.** QuickTime click-through meets the requirement. |
 
 **Demo script (60 s), updated for the cuts:**
@@ -328,11 +328,11 @@ Typed text ──► Worker ──► OpenCode Go alone ──► card
 
 | Day | Focus |
 |---|---|
-| 1 | The unchecked risks R1 and R2 (R3, R9, R10 come at the first speech slice). Worker skeleton. |
-| 2–3 | Listen → clip → MERaLiON → OpenCode Go → card. At the first speech slice, settle R3/R9 (model, audio chat, one or two calls, tokens per clip) and fix the clip length. Plain English faded. Two readings. |
+| 1 | The unchecked risks R1 and R2 (R3, R9, R10 were settled by the step-0 check). Worker skeleton. |
+| 2–3 | Listen → clip → MERaLiON → OpenCode Go → card. Clip length is fixed at 15 s (step 0). Plain English faded. Two readings. |
 | 4 | Error states, Whisper backup, rate guard and budget, landing page. |
 | 5 | Record clips, run E2, run E1. |
-| 6 | Deploy, video, presentation. |
+| 6 | Video, presentation. Deploy only if the user asks (deferred). |
 | 7 | Buffer. Should-haves only if everything above is done. |
 
 ### Later (not this week)
@@ -347,24 +347,23 @@ Anki glossary over MCP; starred terms and summary; live streaming captions; reca
 
 | # | Risk | Status | Check | If it fails |
 |---|---|---|---|---|
-| R1 | **MERaLiON drops particles** (lah, lor, meh, siam) from the transcript. | **Unchecked** | Record 5 clips in the MERaLiON playground. Pass: 4 of 5 keep the particles. Day 1. | Keep MERaLiON (user's decision). Its own reading of tone of voice may still catch what the transcript drops; OpenCode Go also uses context and word choice. Report it honestly with the particle chart. |
+| R1 | **MERaLiON drops particles** (lah, lor, meh, siam) from the transcript. | **Unchecked** | Record 5 clips in the MERaLiON playground. Pass: 4 of 5 keep the particles. Day 1. | Keep MERaLiON (user's decision). OpenCode Go uses context and word choice to cover dropped particles. Report it honestly with the particle chart. **Early sign (step 0):** the 3B ASR turned "lah" into "leh" on a synthetic voice; synthetic audio is not proof either way, so R1 with real voices is still the real test. |
 | R2 | **People won't look at a phone mid-meeting** (the brief's riskiest bet). | **Unchecked** | The brief's mock meeting with 3–5 classmates. Pass: 3 of 5 would use it during or right after, and at most 1 finds it too awkward. | If most say "only after", show cards at Stop instead (recap). Same pipeline. |
-| R3 | **MERaLiON's request format** is unconfirmed: transcription looks OpenAI-style (multipart `file` in, JSON `text` out); the audio format for `/v1/chat/completions` is unknown. | **Unchecked** | Real requests with our key at the first speech slice, before building on them. | Adjust the request; Whisper covers the gap meanwhile. |
-| R9 | **The hosted API may not serve MERaLiON-3 10B, or its chat endpoint may not accept audio**, so option B can't run. | **Unchecked** | Same check as R3, at the first speech slice. | Fall back to transcript-only MERaLiON (option A); OpenCode Go reads tone from words alone. Say so in the presentation. |
-| R10 | **Two MERaLiON calls per clip** break the 5-a-minute limit at 15 s clips and may double audio use; tokens per call are unknown. | **Unchecked** | At the first speech slice: can one call return both? How many tokens does a clip cost? | ~25 s clips, or transcript-only. Re-do the budget table with measured numbers. |
-| R11 | **MERaLiON's reading is wrong, or unsafe** (it isn't safety-aligned). | Guarded | E2 compares MERaLiON's tone with the final card's. | OpenCode Go checks every reading; tone must come from the fixed list; nothing from MERaLiON reaches the screen except the transcript. |
-| R4 | Phones record webm (Chrome) or mp4 (Safari); MERaLiON wants 16 kHz mono. | Unchecked | Part of R3: convert on the phone, test on both. | Conversion on the phone is the plan; the Worker's CPU limit rules out doing it there. |
+| R3 | **MERaLiON's request format.** | **Resolved (step 0)** | Real requests with our key. `POST /v1/audio/transcriptions`, JSON `{"audio_url": "data:audio/wav;base64,..."}` (not multipart), `X-API-Key`; transcript in `choices[0].message.content`; bad key gives 401. | Still open: phones record webm or mp4, so the conversion to 16 kHz mono wav is tested under R4. |
+| R9 | The hosted API may not serve MERaLiON-3 10B, or its chat endpoint may not accept audio. | **Resolved (step 0)** | Checked: only MERaLiON-3-3B-ASR-CTM is served and audio chat returns errors. | Decided: transcript-only; OpenCode Go produces meaning, tone and terms. No 10B, no hint. |
+| R10 | Two MERaLiON calls per clip would break the 5-a-minute limit; tokens per call unknown. | **Resolved (step 0)** | One call per clip, ~345 tokens per clip; 15 s clips fit (4 calls a minute). | None needed. |
+| R4 | Phones record webm (Chrome) or mp4 (Safari); MERaLiON wants 16 kHz mono. | Unchecked | Convert on the phone, test on both (MERaLiON takes wav, mp3 or ogg at 16 kHz mono). | Conversion on the phone is the plan; the Worker's CPU limit rules out doing it there. |
 | R5 | The 15 s target (M3) is missed. | Unmeasured | Timings from E2 and a rehearsal. | Shorter clips (more MERaLiON requests), or accept and report it. |
 | R6 | The E1 sample is small, and hearing a clip twice inflates the with-cards score. | Known | — | Report it in the presentation. |
-| R7 | MERaLiON's monthly hour runs out before demo day. | Guarded | Budget counter, careful development use (short clips, cache, typed text). | Demo on Whisper with "Backup mode" showing. |
+| R7 | MERaLiON's monthly hour runs out before demo day (about 240 clips at 15 s). | Guarded | Budget counter, careful development use (short clips, cache, typed text). | Demo on Whisper with "Backup mode" showing. |
 | R12 | **Anyone with the public link can use the app's quota** (no access code; the user accepts this). | Accepted | The rate guard (5 MERaLiON requests a minute) and monthly limits still apply. | Keep the link private. At the limit the app falls back to Whisper and shows "Backup mode". |
 | R8 | A 15 s clip cuts a sentence in half. | Known | E2 clips are single sentences, so this shows up only live. | The previous sentence is sent as context (B5). |
 
 ### Assumptions
 
 - We have a MERaLiON API key (Q2, answered).
-- MERaLiON can hear tone of voice well enough to add something over the words alone. **Unmeasured**; E2's MERaLiON-vs-final-card tone score is the first evidence.
-- The hosted MERaLiON API serves MERaLiON-3 10B and accepts audio in chat. **Unconfirmed** (R9).
+- OpenCode Go can read tone well enough from the words and particles alone, since MERaLiON now gives the transcript only. **Unmeasured**; the E2 tone score against the reference labels is the evidence.
+- The hosted MERaLiON API serves only MERaLiON-3-3B-ASR-CTM, with no working audio chat. **Confirmed** (step 0, R9). The 3B ASR turned "lah" into "leh" on a synthetic voice, so whether it keeps particles on real voices is still R1.
 - The course's OpenCode Go key can be called from a Worker. Lunch Uncle already does this, which suggests it works.
 - The 4–5 of 10 baseline is a **guess**; E1's without-cards run checks it.
 - Singaporean teammates are available to record clips and write references this week.

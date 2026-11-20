@@ -4,8 +4,8 @@
 
 A phone web app for newcomers at Singapore offices. It listens during a meeting and shows a card for each Singlish sentence: what was said, what it meant, and the tone (firm, reluctant, doubtful…). Plain-English sentences are shown faded and unchanged.
 
-- **Speech:** MERaLiON (A*STAR's Singapore-built speech model) turns Singlish audio into a transcript plus its own reading of the meaning and the tone of voice.
-- **Cards:** OpenCode Go (the course's AI back-end) checks that reading and writes the final card.
+- **Speech:** MERaLiON-3 (3B ASR, A*STAR's Singapore-built speech model) turns Singlish audio into an exact transcript. OpenCode Go (the course's AI back-end) explains the meaning and the tone.
+- **Cards:** OpenCode Go writes each final card from that transcript.
 - **Backup:** Whisper on Cloudflare Workers AI takes over automatically if MERaLiON is unavailable ("Backup mode").
 - **Hosting:** one Cloudflare Worker on the free plan. `public/` is served as static files.
 
@@ -24,7 +24,7 @@ Everyone edits only their own folders, so we can all work at the same time witho
 
 | Person | Owns | Work |
 |---|---|---|
-| **A** | `src/`, `test/`, `package.json`, `wrangler.toml` and other shared config | The app pipeline (slices 1–4, 7, and the Worker side of 5 and 8) and deploys |
+| **A** | `src/`, `test/`, `package.json`, `wrangler.toml` and other shared config | The app pipeline (slices 1–4, 7, and the Worker side of 5 and 8); deploy is deferred until asked |
 | **B** | `evals/`, `reports/r1-*`, `reports/r2-*` | Day-1 risk checks, the 15 eval clips and `evals/references.json`, the eval scripts (slice 6) |
 | **C** | `public/`, `docs/presentation/` | The landing page, logo, icons and manifest (front end of slices 5 and 8), the demo video, the presentation |
 

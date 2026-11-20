@@ -38,3 +38,11 @@
 **Calls I made:** the budget guard is unchanged (5 MERaLiON requests a minute, monthly limits, Whisper with "Backup mode" at the limit), but the whole allowance is usable. R12 is marked "Accepted": anyone with the public link can use the quota; mitigation is to keep the link private, and the rate guard still applies.
 
 **Unsure about:** nothing new. IMPL.md still mentions the access code and demo key and needs the engineering manager's update.
+
+## Revision 3 (2026-11-20): MERaLiON transcript-only, deploy deferred
+
+**What changed in PRD.md:** option B is replaced by transcript-only. MERaLiON (the 3B ASR model, the only one the hosted API serves) transcribes with one call per 15 s clip; OpenCode Go produces the meaning, tone and terms. No MERaLiON hint, no 10B. Updated the approach and diagram, B2, B2a, B4, B6, A3, L1, the course "something new" row (still MERaLiON), the budget table (~345 tokens per clip, audio cap of about 240 clips hits first), the speed and privacy lines, and the day plan. Removed the E2 MERaLiON-vs-final-card tone score and risk R11. R9 and R10 are resolved, R3 is resolved except phone audio conversion (R4). Deploy is deferred: everything runs locally, and the deploy requirements are kept for later. Changes note added.
+
+**Calls I made:** I kept the revision 1 Changes line as history. R1 and the assumptions now note that the 3B ASR turned "lah" into "leh" on a synthetic voice; real voices are still the real test.
+
+**Unsure about:** whether OpenCode Go reads tone well enough from words alone (E2's tone score against reference labels is the evidence). IMPL.md needs the engineering manager's matching update.
