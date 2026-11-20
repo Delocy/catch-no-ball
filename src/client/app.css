@@ -1,0 +1,103 @@
+:root {
+  --bg: #faf8f5;
+  --fg: #1d1b19;
+  --muted: #6d6862;
+  --card: #ffffff;
+  --line: #e3ded7;
+  --accent: #d6541f;
+  --chip-bg: #fde7dd;
+  --chip-fg: #8a2f0c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161412;
+    --fg: #f1ede7;
+    --muted: #a39d94;
+    --card: #211f1c;
+    --line: #36322d;
+    --accent: #ff8a5c;
+    --chip-bg: #4a2616;
+    --chip-fg: #ffcdb6;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.top h1 { font-size: 1.05rem; margin: 0; }
+#cards { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.card p { margin: 0; }
+.card .said { font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
+.card .meaning { margin-top: 6px; color: var(--fg); }
+u.term { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.chip {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+.card.plain { background: transparent; border-style: dashed; opacity: 0.55; }
+.card.plain .said { font-weight: 400; }
+.card.pending { opacity: 0.7; }
+.card.pending .status { margin-top: 4px; color: var(--muted); font-size: 0.9rem; }
+.card.unavailable .retry {
+  margin-top: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.typed {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+.typed input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+}
+.typed button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}

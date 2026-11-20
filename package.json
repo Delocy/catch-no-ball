@@ -1,0 +1,16 @@
+{
+  "name": "catch-no-ball",
+  "version": "1.0.0",
+  "description": "A phone web page that turns Singlish speech into one card per sentence: what was said, what it meant, one tone label.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test \"test/**/*.test.js\" \"evals/**/*.test.js\"",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test-coverage-include=\"evals/**/*.js\" --test-coverage-exclude=\"src/index.js\" --test-coverage-exclude=\"src/client/app.js\" --test-coverage-exclude=\"evals/run.js\" --test-coverage-exclude=\"evals/**/*.test.js\" --test-coverage-lines=81 --test-coverage-branches=81 --test-coverage-functions=81 \"test/**/*.test.js\" \"evals/**/*.test.js\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
