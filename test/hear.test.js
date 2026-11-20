@@ -128,3 +128,14 @@ test("a cached value that is not a transcript is ignored", async () => {
   assert.equal((await hearClip(wav, env, {}, deps)).cached, false);
   assert.equal(calls.fetch.length, 1);
 });
+
+test("the cleaned transcript is what gets cached, and an old bracketed cache entry is cleaned on the way out", async () => {
+  const body = JSON.stringify({ choices: [{ message: { content: "Can (loh) I do it tomorrow?\n" } }], usage: { total_tokens: 344 } });
+  const { deps, env, cache } = setup({ body });
+  const wav = makeWav(1);
+  assert.equal((await hearClip(wav, env, {}, deps)).transcript, "Can loh I do it tomorrow?");
+  assert.deepEqual(JSON.parse(cache.puts[0][1]), { transcript: "Can loh I do it tomorrow?" });
+  const other = makeWav(2);
+  cache.map.set(`hear:${await sha256Hex(other)}`, JSON.stringify({ transcript: "ok (lor)" }));
+  assert.equal((await hearClip(other, env, {}, deps)).transcript, "ok lor");
+});

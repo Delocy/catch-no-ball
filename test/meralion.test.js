@@ -102,3 +102,24 @@ test("sends an abort signal and a timeout becomes MeralionError status null", as
   await assert.rejects(callMeralionTranscribe(makeWav(1), env, f), (e) => e instanceof MeralionError && e.status === null && /timed out/i.test(e.message));
   assert.ok(signal instanceof AbortSignal);
 });
+
+import { cleanTranscript } from "../src/meralion.js";
+
+test("cleanTranscript keeps a bracketed particle and drops its brackets", () => {
+  assert.equal(cleanTranscript("Can (loh) I do it tomorrow?"), "Can loh I do it tomorrow?");
+  assert.equal(cleanTranscript("Cannot shift one (lah)."), "Cannot shift one lah.");
+  assert.equal(cleanTranscript("(Wah) so fast"), "Wah so fast");
+  assert.equal(cleanTranscript("ok ( meh ) can"), "ok meh can");
+});
+
+test("cleanTranscript leaves real parentheses, plain text and spacing alone", () => {
+  assert.equal(cleanTranscript("Send it to Raj (the new guy) first."), "Send it to Raj (the new guy) first.");
+  assert.equal(cleanTranscript("Let's move on to the next agenda item."), "Let's move on to the next agenda item.");
+  assert.equal(cleanTranscript("  a  (lor)  b \n"), "a lor b");
+  assert.equal(cleanTranscript(""), "");
+});
+
+test("callMeralionTranscribe returns the cleaned transcript", async () => {
+  const body = JSON.stringify({ choices: [{ message: { content: "Can (loh) I do it tomorrow?\n" } }], usage: { total_tokens: 344 } });
+  assert.deepEqual(await callMeralionTranscribe(makeWav(1), env, fake(200, body)), { text: "Can loh I do it tomorrow?", tokens: 344 });
+});

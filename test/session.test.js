@@ -93,3 +93,30 @@ test("withContext copies: changing the live array afterwards does not change the
 test("withContext with no context gives []", () => {
   assert.deepEqual(withContext({ kind: "text", text: "t" }, undefined).context, []);
 });
+
+// Review I3 and m1.
+import { sendContext, enteredContext } from "../src/client/session.js";
+
+test("sendContext: a first try takes the live context at send time; a retry keeps its original (I3)", () => {
+  const live = ["a", "b"];
+  const first = sendContext({ kind: "clip" }, live);
+  assert.deepEqual(first, ["a", "b"]);
+  assert.notEqual(first, live);
+  assert.deepEqual(sendContext({ kind: "clip", retry: true, context: ["x"] }, live), ["x"]);
+  assert.deepEqual(sendContext({ kind: "clip", retry: true }, live), ["a", "b"]); // no snapshot yet
+  assert.deepEqual(sendContext({ kind: "text" }, undefined), []);
+});
+
+test("enteredContext: only a meaning_unavailable result with words put the line in context (m1)", () => {
+  assert.equal(enteredContext({ status: "meaning_unavailable", transcript: "x" }), true);
+  assert.equal(enteredContext({ status: "meaning_unavailable", transcript: " " }), false);
+  assert.equal(enteredContext(undefined, new Error("network")), false);
+  assert.equal(enteredContext({ status: "meaning_unavailable", transcript: "x" }, new Error("e")), false);
+  assert.equal(enteredContext({ status: "ok", sentences: [] }), false);
+});
+
+test("a retry after a network error appends on success; a retry after meaning_unavailable does not (m1)", () => {
+  const ok = { status: "ok", sentences: [s("x lah")] };
+  assert.deepEqual(contextAfter(["a"], ok, { retry: enteredContext(undefined, new Error("net")) }), ["a", "x lah"]);
+  assert.deepEqual(contextAfter(["a", "x lah"], ok, { retry: enteredContext({ status: "meaning_unavailable", transcript: "x lah" }) }), ["a", "x lah"]);
+});

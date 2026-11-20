@@ -112,3 +112,50 @@ test("a retried item reaches send with its original context, not a later one (M6
   await q.idle();
   assert.deepEqual(seen, [["A", ["x"]], ["B", ["x", "a"]], ["A", ["x"]]]);
 });
+
+// Review I3: the app's wiring, with the real queue and session functions.
+import { contextAfter, sendContext } from "../src/client/session.js";
+
+function appLike() {
+  let context = [];
+  const sent = [];
+  const releases = [];
+  const q = createClipQueue({
+    send(item) {
+      item.context = sendContext(item, context); // stored so a retry re-sends the same context
+      sent.push([item.name, item.context]);
+      return new Promise((r) => releases.push(() => r({ status: "ok", sentences: [{ said: item.name }] })));
+    },
+    onResult(item, result) { context = contextAfter(context, result, { retry: item.retry }); },
+  });
+  return { q, sent, releaseNext: () => releases.shift()() };
+}
+
+test("a clip created while the previous one is in flight sees that line when it is sent (I3)", async () => {
+  const { q, sent, releaseNext } = appLike();
+  q.push({ kind: "clip", name: "A" });
+  q.push({ kind: "clip", name: "B" }); // created while A is in flight
+  await Promise.resolve();
+  releaseNext();
+  await new Promise((r) => setImmediate(r));
+  releaseNext();
+  await q.idle();
+  assert.deepEqual(sent, [["A", []], ["B", ["A"]]]);
+});
+
+test("a retry re-sends its first context even after later lines arrived (M6 kept)", async () => {
+  const { q, sent, releaseNext } = appLike();
+  const A = { kind: "text", name: "A" };
+  q.push(A);
+  await Promise.resolve();
+  releaseNext();
+  q.push({ kind: "text", name: "B" });
+  await new Promise((r) => setImmediate(r));
+  releaseNext();
+  await q.idle();
+  q.push({ ...A, retry: true });
+  await Promise.resolve();
+  releaseNext();
+  await q.idle();
+  assert.deepEqual(sent, [["A", []], ["B", ["A"]], ["A", []]]);
+});

@@ -79,3 +79,13 @@ test("app.css pins the banner at the top and styles the uncaught card", () => {
   assert.match(css, /\.banner\s*\{[^}]*position:\s*sticky/);
   assert.match(css, /\.card\.uncaught/);
 });
+
+import { COPY } from "../src/client/copy.js";
+
+test("the banner copy in app.html is exactly COPY.translating and COPY.tellTable (m3)", () => {
+  const html = read("src/pages/app.html");
+  assert.ok(html.includes(`>${COPY.translating}<`));
+  assert.ok(html.includes(`>${COPY.tellTable}<`));
+  assert.match(read("src/client/app.js"), /COPY\.translating/);
+  assert.match(read("src/client/app.js"), /COPY\.tellTable/);
+});

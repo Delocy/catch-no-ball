@@ -216,3 +216,12 @@ test("a clip's pending card shows only the Translating label", () => {
   assert.match(html, /Translating/);
   assert.doesNotMatch(html, /class="said"/);
 });
+
+test("renderResult: a 400/413 on a clip is \"Couldn't catch that\", never a retry that cannot work (m2)", () => {
+  const err = Object.assign(new Error("413"), { kind: "bad_request", status: 413 });
+  const out = renderResult({ cardId: "c9", kind: "clip" }, undefined, err);
+  assert.match(out.html, /class="card uncaught" id="c9"/);
+  assert.equal(out.retryable, false);
+  const net = renderResult({ cardId: "c9", kind: "clip" }, undefined, Object.assign(new Error("x"), { kind: "network" }));
+  assert.equal(net.retryable, true);
+});

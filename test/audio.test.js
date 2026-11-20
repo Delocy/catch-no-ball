@@ -90,3 +90,37 @@ test("bytesToBase64 equals Buffer.from(bytes).toString(\"base64\") for 100,000 r
   assert.equal(bytesToBase64(bytes), Buffer.from(bytes).toString("base64"));
   assert.equal(bytesToBase64(new Uint8Array(0)), "");
 });
+
+// Review I2: the header must be self-consistent and the data chunk must be the rest of the body.
+const forge = (wav, fn) => { const b = wav.slice(); fn(new DataView(b.buffer)); return b; };
+
+test("a byteRate that does not match sampleRate x channels x bits/8 is not_wav", () => {
+  const lying = forge(makeWav(10), (v) => v.setUint32(28, 32000 * 20, true));
+  assert.throws(() => wavInfo(lying), { message: "not_wav" });
+});
+
+test("a blockAlign that does not match channels x bits/8 is not_wav", () => {
+  assert.throws(() => wavInfo(forge(makeWav(1), (v) => v.setUint16(32, 4, true))), { message: "not_wav" });
+});
+
+test("bytes after the data chunk are not_wav (a 1 s header followed by 60 s of samples)", () => {
+  const head = makeWav(1);
+  const body = new Uint8Array(44 + 32000 * 60);
+  body.set(head.subarray(0, 44));
+  assert.throws(() => wavInfo(body), { message: "not_wav" });
+  const oneExtra = new Uint8Array(head.length + 2);
+  oneExtra.set(head);
+  assert.throws(() => wavInfo(oneExtra), { message: "not_wav" });
+});
+
+test("a data chunk shorter than its header says is not_wav", () => {
+  assert.throws(() => wavInfo(makeWav(2).subarray(0, 44 + 32000)), { message: "not_wav" });
+});
+
+test("an odd-sized data chunk may end with its pad byte", () => {
+  const w = makeWav(1);
+  const odd = new Uint8Array(w.length); // data size 31999 + 1 pad byte
+  odd.set(w);
+  new DataView(odd.buffer).setUint32(40, 31999, true);
+  assert.ok(Math.abs(wavInfo(odd).seconds - 31999 / 32000) < 1e-9);
+});

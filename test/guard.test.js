@@ -144,7 +144,11 @@ test("budgetStatus reports usage, limits and recent requests without consuming",
 
 function fakeCtx() {
   const map = new Map();
-  return { map, storage: { get: async (k) => structuredClone(map.get(k)), put: async (k, v) => { map.set(k, structuredClone(v)); } } };
+  return {
+    map,
+    storage: { get: async (k) => structuredClone(map.get(k)), put: async (k, v) => { map.set(k, structuredClone(v)); } },
+    blockConcurrencyWhile: (fn) => fn(),
+  };
 }
 const post = (path, body) => new Request("http://guard" + path, { method: "POST", body: JSON.stringify(body) });
 
@@ -242,4 +246,34 @@ test("guardStatus GETs /status and returns its JSON", async () => {
 
 test("guardStatus throws when there is no guard binding", async () => {
   await assert.rejects(guardStatus({}));
+});
+
+// Review I1: like a real Durable Object, blockConcurrencyWhile runs one callback at a time.
+function lockingCtx() {
+  const c = fakeCtx();
+  let chain = Promise.resolve();
+  c.blockConcurrencyWhile = (fn) => {
+    const run = chain.then(fn);
+    chain = run.catch(() => {});
+    return run;
+  };
+  return c;
+}
+
+test("8 concurrent reserves: exactly 5 allowed, and stored requests matches the number allowed (I1)", async () => {
+  const ctx = lockingCtx();
+  const g = new MeralionGuard(ctx, {});
+  const rs = await Promise.all(Array.from({ length: 8 }, () => g.fetch(post("/reserve", { seconds: 15 })).then((r) => r.json())));
+  const allowed = rs.filter((r) => r.allow).length;
+  assert.equal(allowed, 5);
+  assert.equal(ctx.map.get("state").requests, 5);
+  assert.equal(ctx.map.get("state").seconds, 75);
+  assert.equal(rs.filter((r) => r.reason === "rate").length, 3);
+});
+
+test("concurrent /tokens posts are all counted (I1)", async () => {
+  const ctx = lockingCtx();
+  const g = new MeralionGuard(ctx, {});
+  await Promise.all(Array.from({ length: 6 }, () => g.fetch(post("/tokens", { tokens: 100 }))));
+  assert.equal(ctx.map.get("state").tokens, 600);
 });

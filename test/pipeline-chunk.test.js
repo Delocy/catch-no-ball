@@ -175,3 +175,58 @@ test("handleBudget returns guardStatus as JSON", async () => {
   assert.deepEqual(await res.json(), status);
   assert.equal(seenEnv, env);
 });
+
+// Review I2: body size limit, checked before any MERaLiON call.
+import { MAX_CHUNK_BYTES } from "../src/pipeline.js";
+
+test("MAX_CHUNK_BYTES is about 1.1 MB and a 30 s clip fits", () => {
+  assert.equal(MAX_CHUNK_BYTES, 1100000);
+  assert.ok(makeWav(30).length + 1000 < MAX_CHUNK_BYTES);
+});
+
+test("a content-length over the limit -> 413 too_long without reading the body", async () => {
+  const { deps: d, calls } = deps();
+  const req = new Request("http://x/api/chunk", { method: "POST", headers: { "content-length": String(MAX_CHUNK_BYTES + 1) }, body: "x" });
+  req.formData = () => { throw new Error("body was read"); };
+  const res = await handleChunk(req, {}, d);
+  assert.equal(res.status, 413);
+  assert.deepEqual(await res.json(), { error: "too_long" });
+  assert.equal(calls.hear.length, 0);
+});
+
+test("an audio file over the limit (whatever the headers say) -> 413 too_long", async () => {
+  const { deps: d, calls } = deps();
+  const big = new Uint8Array(MAX_CHUNK_BYTES + 1);
+  big.set(makeWav(1).subarray(0, 44));
+  const req = chunk({ wav: big });
+  const fake = new Request(req.url, { method: "POST", headers: { "content-type": req.headers.get("content-type") }, body: await req.arrayBuffer(), duplex: "half" });
+  fake.headers.delete("content-length");
+  const res = await handleChunk(fake, {}, d);
+  assert.equal(res.status, 413);
+  assert.equal(calls.hear.length, 0);
+});
+
+test("forged headers never reach hearClip: lying byteRate and trailing samples -> 400 bad_audio", async () => {
+  const { deps: d, calls } = deps();
+  const lying = makeWav(10);
+  new DataView(lying.buffer).setUint32(28, 32000 * 20, true);
+  const trailing = new Uint8Array(44 + 32000 * 20);
+  trailing.set(makeWav(1).subarray(0, 44));
+  for (const wav of [lying, trailing]) {
+    const res = await handleChunk(chunk({ wav }), {}, d);
+    assert.equal(res.status, 400);
+  }
+  assert.equal(calls.hear.length, 0);
+});
+
+test("a spoken repeat with the same context skips OpenCode too", async () => {
+  const map = new Map();
+  const CACHE = { async get(k) { return map.has(k) ? JSON.parse(map.get(k)) : null; }, async put(k, v) { map.set(k, v); } };
+  const { deps: d, calls } = deps();
+  await handleChunk(chunk(), { CACHE }, d);
+  const again = await (await handleChunk(chunk(), { CACHE }, d)).json();
+  assert.equal(calls.interpret.length, 1);
+  assert.equal(again.status, "ok");
+  assert.equal(again.passes, 0);
+  assert.equal(again.source, "meralion");
+});
