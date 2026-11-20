@@ -144,7 +144,10 @@ async function callOpenCode({ transcript, context, retry, sessionId }, env, fetc
 
   let content;
   try {
-    content = (await res.json()).choices?.[0]?.message?.content;
+    const data = await res.json();
+    content = data.choices?.[0]?.message?.content;
+    // Token counts only (never content or headers): used to watch OpenCode Go latency and cost.
+    if (data.usage) console.log(`opencode usage: ${JSON.stringify(data.usage)}`);
   } catch {
     throw new InterpretError("reply body is not JSON");
   }

@@ -56,32 +56,39 @@ export class MeralionGuard {
 
   async fetch(request) {
     const { pathname } = new URL(request.url);
-    const now = Date.now();
-    const state = await this.ctx.storage.get("state");
+    const route = `${request.method} ${pathname}`;
+    if (route === "GET /status") return json(budgetStatus(await this.ctx.storage.get("state"), Date.now()));
+    if (route !== "POST /reserve" && route !== "POST /tokens") return json({ error: "not_found" }, 404);
 
-    if (request.method === "GET" && pathname === "/status") return json(budgetStatus(state, now));
-
-    if (request.method === "POST" && (pathname === "/reserve" || pathname === "/tokens")) {
-      let body;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "bad_request" }, 400);
-      }
-      if (pathname === "/tokens") {
-        await this.ctx.storage.put("state", recordTokens(state, { now, tokens: body?.tokens }));
-        return json({ ok: true });
-      }
-      const seconds = body?.seconds;
-      if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
-        return json({ error: "bad_request" }, 400);
-      }
-      const d = decide(state, { now, seconds });
-      if (d.allow) await this.ctx.storage.put("state", d.state);
-      return json(d.allow ? { allow: true } : { allow: false, reason: d.reason });
+    // Read the body first: no non-storage await may sit between get and put (review I1).
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "bad_request" }, 400);
     }
+    if (route === "POST /tokens") {
+      await this.update((state, now) => ({ state: recordTokens(state, { now, tokens: body?.tokens }) }));
+      return json({ ok: true });
+    }
+    const seconds = body?.seconds;
+    if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
+      return json({ error: "bad_request" }, 400);
+    }
+    const d = await this.update((state, now) => {
+      const r = decide(state, { now, seconds });
+      return { state: r.allow ? r.state : undefined, reply: r.allow ? { allow: true } : { allow: false, reason: r.reason } };
+    });
+    return json(d);
+  }
 
-    return json({ error: "not_found" }, 404);
+  // One read-modify-write at a time, so two reserves can never both read the same state.
+  update(change) {
+    return this.ctx.blockConcurrencyWhile(async () => {
+      const { state, reply } = change(await this.ctx.storage.get("state"), Date.now());
+      if (state !== undefined) await this.ctx.storage.put("state", state);
+      return reply;
+    });
   }
 }
 

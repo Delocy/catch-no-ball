@@ -1,7 +1,7 @@
 // Turns a clip into a transcript: KV cache, then the guard, then MERaLiON.
 // Slice 4 adds the Whisper fallback without changing the signature.
 import { wavInfo, sha256Hex } from "./audio.js";
-import { callMeralionTranscribe, MeralionError } from "./meralion.js";
+import { callMeralionTranscribe, MeralionError, cleanTranscript } from "./meralion.js";
 import { reserveMeralion, recordMeralionTokens } from "./guard.js";
 
 export const CACHE_TTL_SECONDS = 604800; // 7 days
@@ -43,7 +43,8 @@ export async function hearClip(bytes, env, { asr = "auto" } = {}, deps = DEFAULT
   const key = `hear:${await sha256Hex(bytes)}`;
 
   const hit = await cacheGet(env, key);
-  if (hit !== null) return { transcript: hit, source: "meralion", cached: true };
+  // Entries cached before cleanTranscript existed are cleaned on the way out.
+  if (hit !== null) return { transcript: cleanTranscript(hit), source: "meralion", cached: true };
 
   const { seconds } = wavInfo(bytes);
   const r = await d.reserve(env, { seconds });

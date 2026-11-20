@@ -14,6 +14,16 @@ export class MeralionError extends Error {
   }
 }
 
+// MERaLiON sometimes brackets a particle it heard ("Can (loh) I do it tomorrow?"). Keep the
+// word, drop the brackets, so the cache, interpret's verbatim check and the card all see the
+// same clean text. Only a single bracketed word is touched; real parentheses are left alone.
+export function cleanTranscript(text) {
+  return String(text)
+    .replace(/\(\s*([\p{L}']{1,12})\s*\)/gu, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // One JSON request per clip. Error bodies are never trusted to be JSON (a 500 is plain text),
 // and are not put in the error message.
 export async function callMeralionTranscribe(bytes, env, fetchImpl = fetch) {
@@ -39,5 +49,5 @@ export async function callMeralionTranscribe(bytes, env, fetchImpl = fetch) {
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw new MeralionError("reply has no transcript", res.status);
   const total = data.usage?.total_tokens;
-  return { text: content.trim(), tokens: Number.isFinite(total) && total > 0 ? total : 0 };
+  return { text: cleanTranscript(content), tokens: Number.isFinite(total) && total > 0 ? total : 0 };
 }

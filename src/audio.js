@@ -6,6 +6,7 @@ export const REQUIRED_SAMPLE_RATE = 16000;
 const tag = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
 
 // Reads the RIFF/WAVE header, walking chunks to `fmt ` and `data` (LIST and others are skipped).
+// Throws not_wav unless the header is self-consistent PCM and the data chunk ends the body.
 export function wavInfo(bytes) {
   if (!(bytes instanceof Uint8Array) || bytes.length < 12 || tag(bytes, 0) !== "RIFF" || tag(bytes, 8) !== "WAVE") {
     throw new Error("not_wav");
@@ -23,16 +24,25 @@ export function wavInfo(bytes) {
         channels: v.getUint16(o + 10, true),
         sampleRate: v.getUint32(o + 12, true),
         byteRate: v.getUint32(o + 16, true),
+        blockAlign: v.getUint16(o + 20, true),
         bitsPerSample: v.getUint16(o + 22, true),
       };
     } else if (id === "data") {
-      dataSize = Math.min(size, bytes.length - o - 8);
+      // The data chunk must be the rest of the body: no short data and nothing hidden after it
+      // (every byte is sent to MERaLiON, so the duration must cover every byte; review I2).
+      const rest = bytes.length - o - 8;
+      if (rest !== size && rest !== size + (size % 2)) throw new Error("not_wav");
+      dataSize = size;
       break;
     }
     o += 8 + size + (size % 2);
   }
-  if (!fmt || dataSize === null || fmt.format !== 1 || !fmt.byteRate) throw new Error("not_wav");
-  const { sampleRate, channels, bitsPerSample, byteRate } = fmt;
+  if (!fmt || dataSize === null || fmt.format !== 1) throw new Error("not_wav");
+  const { sampleRate, channels, bitsPerSample, byteRate, blockAlign } = fmt;
+  // A self-consistent PCM header: duration is never taken from a forged byteRate.
+  if (!byteRate || blockAlign !== (channels * bitsPerSample) / 8 || byteRate !== sampleRate * blockAlign) {
+    throw new Error("not_wav");
+  }
   return { sampleRate, channels, bitsPerSample, seconds: dataSize / byteRate };
 }
 
