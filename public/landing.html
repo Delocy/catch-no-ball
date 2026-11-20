@@ -31,10 +31,15 @@
 
   /* nav */
   nav { display:flex; align-items:center; justify-content:space-between; padding:14px 0; }
-  nav img { height:46px; display:block; }
-  .brand { display:flex; align-items:center; gap:8px; text-decoration:none; position:relative; z-index:2; }
-  .brand span { font-weight:900; font-size:1.35rem; letter-spacing:-1px; text-shadow:2px 2px 0 var(--yellow); }
+  nav img { height:86px; display:block; filter:drop-shadow(0 4px 0 rgba(31,27,46,.18)); transform-origin:50% 90%; animation:logo-bounce 2.4s ease-in-out infinite; }
+  .brand { display:flex; align-items:center; gap:12px; text-decoration:none; position:relative; z-index:2; }
+  .brand span { font-weight:900; font-size:2rem; letter-spacing:-1.5px; line-height:1; text-shadow:3px 3px 0 var(--yellow); display:inline-block; transform:rotate(-2deg); }
   .brand em { font-style:normal; color:var(--red); }
+  .brand:hover img { animation:logo-wiggle .6s ease-in-out infinite; }
+  .brand::after { content:"\2605"; position:absolute; left:74px; top:-4px; color:var(--yellow); font-size:1.3rem; text-shadow:-1px -1px 0 var(--ink),1px -1px 0 var(--ink),-1px 1px 0 var(--ink),1px 1px 0 var(--ink); animation:twinkle 1.6s ease-in-out infinite; }
+  @keyframes logo-bounce { 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-7px) rotate(4deg); } }
+  @keyframes logo-wiggle { 0%,100%{ transform:rotate(-10deg) scale(1.08); } 50%{ transform:rotate(10deg) scale(1.08); } }
+  @keyframes twinkle { 0%,100%{ transform:scale(.6) rotate(0); opacity:.7; } 50%{ transform:scale(1.2) rotate(30deg); opacity:1; } }
   nav .links { display:flex; gap:18px; align-items:center; font-weight:800; }
   nav .links a.plain { text-decoration:none; }
   nav .links a.plain:hover { text-decoration:underline wavy var(--red); }
@@ -133,6 +138,11 @@
     .hero-grid { grid-template-columns:1fr; }
     .phone { margin:10px auto 0; transform:rotate(1.5deg); }
     nav .links a.plain { display:none; }
+  }
+  @media (max-width:520px) {
+    nav img { height:60px; }
+    .brand span { font-size:1.3rem; }
+    .brand::after { left:50px; }
   }
   @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
 </style>
