@@ -1,0 +1,9 @@
+// Status log for the product-manager subagent (PRD.md)
+[
+  { "time": "2026-11-20T13:50:00+08:00", "step": "read inputs", "status": "started", "note": "Reading decisions.md, PRODUCT_BRIEF.md, docs/PRD.md" },
+  { "time": "2026-11-20T13:55:00+08:00", "step": "read inputs", "status": "done", "note": "Read all three. Old PRD has 5 stories, 25-clip evals, star/summary, setting picker; too much for 1 week." },
+  { "time": "2026-11-20T13:56:00+08:00", "step": "scope cuts", "status": "progress", "note": "Cutting star + Stop summary, setting picker, offline chunk queue, 25-clip set to 15, two-prompt comparison. Tap-a-term becomes a should-have. Keeping every design call listed as approved in decisions.md." },
+  { "time": "2026-11-20T13:57:00+08:00", "step": "write PRD.md", "status": "started", "note": "Writing PRD.md at repo root" },
+  { "time": "2026-11-20T14:10:00+08:00", "step": "write PRD.md", "status": "done", "note": "PRD.md written: 15 stories (13 must, 2 should), metrics M1-M5, E1/E2, 8 risks (R1-R3 unchecked), 4 open questions." },
+  { "time": "2026-11-20T14:12:00+08:00", "step": "final report", "status": "done", "note": "reports/product-manager.md written. docs/PRD.md left in place for the controller to remove." }
+]
