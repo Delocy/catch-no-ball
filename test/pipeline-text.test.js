@@ -64,7 +64,6 @@ test("interpret throwing gives meaning_unavailable with the transcript and no se
     sentences: [],
     passes: 1,
     cached: false,
-    hint: null,
   });
 });
 
@@ -107,11 +106,11 @@ test("context is limited to the last 3 entries of at most 1000 characters", asyn
   assert.equal(calls[0].args.context[0], "c");
 });
 
-test("the result carries hint: null (ChunkResult contract), also for meaning_unavailable", async () => {
+test("the result has no hint field (revision 5: transcript-only), also for meaning_unavailable", async () => {
   const ok = await (await handleText(post({ text: "hi" }), {}, deps().deps)).json();
-  assert.equal(ok.hint, null);
+  assert.ok(!("hint" in ok));
   const bad = await (await handleText(post({ text: "hi" }), {}, deps(() => { throw new Error("x"); }).deps)).json();
-  assert.equal(bad.hint, null);
+  assert.ok(!("hint" in bad));
 });
 
 test("a sessionId that is not header-safe gets a UUID instead", async () => {
@@ -146,4 +145,76 @@ test("a failed retry reports passes 2; a plain failure reports passes 1", async 
   const plainFail = deps(() => { throw new Error("x"); });
   const b = await (await handleText(post({ text: "can meh", sessionId: "s" }), {}, plainFail.deps)).json();
   assert.equal(b.passes, 1);
+});
+
+// Review concern 3: the interpretation is cached in KV, keyed on the transcript and the context sent.
+import { INTERP_TTL_SECONDS, interpKey } from "../src/pipeline.js";
+
+function kv({ throwGet = false, throwPut = false } = {}) {
+  const map = new Map();
+  const puts = [];
+  return {
+    map, puts,
+    async get(k, type) { if (throwGet) throw new Error("kv down"); const v = map.get(k); return v === undefined ? null : type === "json" ? JSON.parse(v) : v; },
+    async put(k, v, o) { if (throwPut) throw new Error("kv full"); puts.push([k, v, o]); map.set(k, v); },
+  };
+}
+
+test("a repeat of the same text and context is served from the cache: no OpenCode call, passes 0", async () => {
+  const { deps: d, calls } = deps();
+  const env = { CACHE: kv() };
+  const body = { text: "Eh the deadline confirm cannot shift one lah", sessionId: "s", context: ["a"] };
+  const first = await (await handleText(post(body), env, d)).json();
+  const again = await (await handleText(post(body), env, d)).json();
+  assert.equal(calls.length, 1);
+  assert.equal(first.passes, 1);
+  assert.equal(again.status, "ok");
+  assert.equal(again.passes, 0);
+  assert.deepEqual(again.sentences, first.sentences);
+  assert.equal(again.cached, false); // `cached` is about the speech model, not the interpretation
+});
+
+test("a different context is a cache miss", async () => {
+  const { deps: d, calls } = deps();
+  const env = { CACHE: kv() };
+  await handleText(post({ text: "can lor", context: ["a"] }), env, d);
+  await handleText(post({ text: "can lor", context: ["b"] }), env, d);
+  await handleText(post({ text: "can lor", context: [] }), env, d);
+  assert.equal(calls.length, 3);
+});
+
+test("the cache entry: key interp:<sha256>, value { sentences, passes }, 7-day TTL", async () => {
+  const { deps: d } = deps();
+  const env = { CACHE: kv() };
+  await handleText(post({ text: "can lor", context: ["a"] }), env, d);
+  const [k, v, o] = env.CACHE.puts[0];
+  assert.equal(k, await interpKey("can lor", ["a"]));
+  assert.match(k, /^interp:[0-9a-f]{64}$/);
+  assert.deepEqual(JSON.parse(v), { sentences: [sentence()], passes: 1 });
+  assert.equal(INTERP_TTL_SECONDS, 604800);
+  assert.deepEqual(o, { expirationTtl: 604800 });
+  assert.notEqual(await interpKey("can lor", ["a"]), await interpKey("can lor", ["b"]));
+});
+
+test("a failed interpretation is not cached", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const { deps: d } = deps(() => { throw new Error("down"); });
+  const env = { CACHE: kv() };
+  await handleText(post({ text: "can lor" }), env, d);
+  assert.equal(env.CACHE.puts.length, 0);
+});
+
+test("no CACHE, a throwing get or put, or a bad cached value still interprets", async (t) => {
+  t.mock.method(console, "error", () => {});
+  for (const env of [{}, { CACHE: kv({ throwGet: true }) }, { CACHE: kv({ throwPut: true }) }]) {
+    const { deps: d, calls } = deps();
+    const body = await (await handleText(post({ text: "can lor" }), env, d)).json();
+    assert.equal(body.status, "ok");
+    assert.equal(calls.length, 1);
+  }
+  const env = { CACHE: kv() };
+  env.CACHE.map.set(await interpKey("can lor", []), JSON.stringify({ sentences: "nope" }));
+  const { deps: d, calls } = deps();
+  await handleText(post({ text: "can lor" }), env, d);
+  assert.equal(calls.length, 1);
 });

@@ -19,3 +19,19 @@ run_worker_first = ["/app", "/api/*", "/client/*"]
 # Secrets (OPENCODE_API_KEY, MERALION_API_KEY) are set with
 # `wrangler secret put` for deploys and `.dev.vars` for local development.
 # Never put them in this file.
+
+# Slice 3: the MERaLiON rate guard and monthly budget (a SQLite-backed Durable Object,
+# the only kind the free plan allows). Added together with the export in src/index.js.
+[[durable_objects.bindings]]
+name = "MERALION_GUARD"
+class_name = "MeralionGuard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MeralionGuard"]
+
+# Slice 3: MERaLiON transcript cache. Placeholder id: local dev accepts any id.
+# The real id (npx wrangler kv namespace create CACHE) is set only when deploying.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "00000000000000000000000000000000"

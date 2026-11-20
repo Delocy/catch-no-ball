@@ -106,3 +106,47 @@ u.term { text-decoration: underline; text-decoration-color: var(--accent); text-
 .card.unsure .reading { margin-top: 4px; }
 .card.unsure .reading .chip { margin: 0 0 0 6px; }
 .card.unsure .or { margin-top: 4px; color: var(--muted); font-size: 0.9rem; font-style: italic; }
+.top .listen {
+  margin-left: auto;
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+.top .listen[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 16px;
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  border-bottom: 1px solid var(--line);
+}
+.banner[hidden] { display: none; }
+.banner p { margin: 0; }
+.banner .translating { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.banner .tell { font-size: 0.9rem; }
+.banner .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .banner .dot { animation: none; } }
+.mic-help { margin: 12px 16px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--accent); font-size: 0.95rem; }
+.mic-help[hidden] { display: none; }
+.card.uncaught { border-style: dashed; }
+.card.uncaught .said { font-weight: 600; color: var(--muted); }
+.card.uncaught .fix { display: flex; gap: 8px; margin-top: 8px; }
+.card.uncaught .fix input {
+  flex: 1; min-width: 0; font: inherit; padding: 8px 10px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+.card.uncaught .fix button {
+  font: inherit; font-weight: 600; padding: 8px 12px; border-radius: 10px; border: 0;
+  background: var(--accent); color: #fff;
+}

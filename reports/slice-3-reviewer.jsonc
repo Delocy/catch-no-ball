@@ -1,0 +1,9 @@
+// Slice 3 reviewer status log
+[
+  { "time": "2026-11-20T00:00:00Z", "step": "read inputs", "status": "done", "note": "IMPL slice 3 + section 1, engineer report, step 0 shapes, PRD stories" },
+  { "time": "2026-11-20T00:10:00Z", "step": "server review", "status": "done", "note": "audio, meralion, guard, hear, pipeline, router, wrangler.toml; found DO race (I1) and header-trust (I2)" },
+  { "time": "2026-11-20T00:20:00Z", "step": "client review", "status": "done", "note": "app, wav, clipper, worklet, mic, session, queue, api, cards; concern 1 confirmed (I3)" },
+  { "time": "2026-11-20T00:25:00Z", "step": "tests", "status": "done", "note": "npm test 271/275 pass, 0 fail, 4 todo; coverage 97.07/98.19/95.58" },
+  { "time": "2026-11-20T00:30:00Z", "step": "repro", "status": "done", "note": "scratch race.mjs: 8/8 reserves allowed concurrently; byteRate lie reads 10 s as 0.5 s" },
+  { "time": "2026-11-20T00:40:00Z", "step": "report", "status": "done", "note": "verdict: changes requested, 3 Important, 9 Minor" }
+]

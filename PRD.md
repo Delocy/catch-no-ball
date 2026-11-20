@@ -23,7 +23,7 @@ Labels used below:
 
 **Primary user.** A foreign professional in their first three months at a Singapore office, holding their own phone in a team meeting.
 
-**People affected but not users.** The Singaporean colleagues speaking. They never touch the app, but their speech is sent to MERaLiON to be transcribed and understood, so they must be told the app is on.
+**People affected but not users.** The Singaporean colleagues speaking. They never touch the app, but their speech is sent to MERaLiON to be transcribed, so they must be told the app is on.
 
 **Other audiences for this build.**
 

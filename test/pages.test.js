@@ -66,3 +66,26 @@ landing("landing references no local paths other than /, /app, /logo.svg, /logo-
 landing("landing has a prefers-color-scheme: dark rule", (html) => {
   assert.match(html, /prefers-color-scheme:\s*dark/);
 });
+
+test("app.html has a Listen button and a hidden Translating banner with the tell-the-table line", () => {
+  const html = read("src/pages/app.html");
+  assert.match(html, /<button[^>]+id="listen"[^>]*>Listen<\/button>/);
+  assert.match(html, /id="banner"[^>]*hidden/);
+  assert.match(html, /id="mic-help"/);
+});
+
+test("app.css pins the banner at the top and styles the uncaught card", () => {
+  const css = read("src/client/app.css");
+  assert.match(css, /\.banner\s*\{[^}]*position:\s*sticky/);
+  assert.match(css, /\.card\.uncaught/);
+});
+
+import { COPY } from "../src/client/copy.js";
+
+test("the banner copy in app.html is exactly COPY.translating and COPY.tellTable (m3)", () => {
+  const html = read("src/pages/app.html");
+  assert.ok(html.includes(`>${COPY.translating}<`));
+  assert.ok(html.includes(`>${COPY.tellTable}<`));
+  assert.match(read("src/client/app.js"), /COPY\.translating/);
+  assert.match(read("src/client/app.js"), /COPY\.tellTable/);
+});
