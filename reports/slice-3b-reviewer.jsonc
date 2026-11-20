@@ -1,0 +1,8 @@
+// Status log for slice-3b-reviewer
+[
+  { "time": "2026-11-20T17:00:00+08:00", "step": "read IMPL slice 3b, constants, COPY, PRD US-16, engineer report", "status": "done", "note": "" },
+  { "time": "2026-11-20T17:10:00+08:00", "step": "read diff; checked wav.js, session.js, api.js, pipeline.js, guard.js for named risks", "status": "done", "note": "No server change; budget shape and charged seconds match the estimate" },
+  { "time": "2026-11-20T17:20:00+08:00", "step": "npm test, npm run coverage", "status": "done", "note": "324 pass, 0 fail, 4 todo; 97.56/98.06/95.89; gate passes" },
+  { "time": "2026-11-20T17:35:00+08:00", "step": "analysis", "status": "done", "note": "2 Important (typed lines starved behind the upload + adjacency-based pacing; byte cap does not bound decode memory for m4a/mp3), 8 Minor" },
+  { "time": "2026-11-20T17:45:00+08:00", "step": "reports", "status": "done", "note": "reports/slice-3b-reviewer.md written" }
+]

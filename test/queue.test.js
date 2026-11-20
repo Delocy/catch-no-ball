@@ -159,3 +159,119 @@ test("a retry re-sends its first context even after later lines arrived (M6 kept
   await q.idle();
   assert.deepEqual(sent, [["A", []], ["B", ["A"]], ["A", []]]);
 });
+
+test("gapMs is awaited between items, never before the first or after the last", async () => {
+  const slept = [];
+  const q = createClipQueue({
+    send: async () => ({}), onResult: () => {},
+    gapMs: () => 13000, sleep: async (ms) => { slept.push(ms); },
+  });
+  q.push({ kind: "clip", uploadId: "u1" });
+  q.push({ kind: "clip", uploadId: "u1" });
+  await q.idle();
+  assert.deepEqual(slept, [13000]);
+  const none = [];
+  const q2 = createClipQueue({ send: async () => ({}), onResult: () => {}, gapMs: () => 0, sleep: async (ms) => none.push(ms) });
+  q2.push({ n: 1 }); q2.push({ n: 2 });
+  await q2.idle();
+  assert.deepEqual(none, []);
+});
+
+test("drop removes waiting items, never the one in flight", async () => {
+  const sent = [];
+  const results = [];
+  let release;
+  const q = createClipQueue({
+    send: (item) => { sent.push(item.id); return new Promise((r) => { release = () => r("ok"); }); },
+    onResult: (item) => results.push(item.id),
+  });
+  const A = { id: "A", uploadId: "u1" }, B = { id: "B", uploadId: "u1" }, C = { id: "C", uploadId: "u1" };
+  q.push(A); q.push(B); q.push(C);
+  await Promise.resolve();
+  assert.deepEqual(q.drop((i) => i.uploadId === "u1"), [B, C]);
+  release();
+  await q.idle();
+  assert.deepEqual(sent, ["A"]);
+  assert.deepEqual(results, ["A"]);
+  assert.equal(q.size(), 0);
+});
+
+test("drop during the gap removes the next item", async () => {
+  const sent = [];
+  let wake;
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: () => 13000,
+    sleep: () => new Promise((r) => { wake = r; }),
+  });
+  q.push({ id: "A", uploadId: "u1" }); q.push({ id: "B", uploadId: "u1" });
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(q.drop((i) => i.id === "B").map((i) => i.id), ["B"]);
+  wake();
+  await q.idle();
+  assert.deepEqual(sent, ["A"]);
+});
+
+test("a typed line pushed during an upload is sent in push order with no gap around it", async () => {
+  const sent = [];
+  const gaps = [];
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: (next, prev) => (next.uploadId && prev.uploadId ? 13000 : 0),
+    sleep: async (ms) => { gaps.push(ms); },
+  });
+  q.push({ id: "c1", uploadId: "u1" });
+  q.push({ id: "t", kind: "text" });
+  q.push({ id: "c2", uploadId: "u1" });
+  await q.idle();
+  assert.deepEqual(sent, ["c1", "t", "c2"]);
+  assert.deepEqual(gaps, []);
+});
+
+test("a text item jumps ahead of waiting upload clips but not the one in flight; typed lines keep their order", async () => {
+  const sent = [];
+  let release;
+  const q = createClipQueue({
+    send: (item) => { sent.push(item.id); return new Promise((r) => { release = () => r({}); }); },
+    onResult: () => {},
+  });
+  q.push({ id: "c1", kind: "clip", uploadId: "u" });
+  q.push({ id: "c2", kind: "clip", uploadId: "u" });
+  q.push({ id: "t1", kind: "text" });
+  q.push({ id: "t2", kind: "text" });
+  q.push({ id: "L", kind: "clip" }); // a Listen clip keeps push order
+  await Promise.resolve();
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release(); await new Promise((r) => setImmediate(r));
+  release();
+  await q.idle();
+  assert.deepEqual(sent, ["c1", "t1", "t2", "c2", "L"]);
+});
+
+test("drop wakes a pending gap so the loop moves on at once", async () => {
+  const sent = [];
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: (next) => (next.uploadId ? 13000 : 0),
+    sleep: () => new Promise(() => {}), // never resolves on its own
+  });
+  q.push({ id: "A", uploadId: "u1" }); q.push({ id: "B", uploadId: "u1" });
+  await new Promise((r) => setImmediate(r));
+  q.drop((i) => i.uploadId === "u1");
+  q.push({ id: "T", kind: "text" });
+  await q.idle();
+  assert.deepEqual(sent, ["A", "T"]);
+});
+
+test("the default sleep waits with setTimeout", async () => {
+  const q = createClipQueue({ send: async (i) => i, onResult: () => {}, gapMs: () => 5 });
+  const t0 = Date.now();
+  q.push({ a: 1 }); q.push({ a: 2 });
+  await q.idle();
+  assert.ok(Date.now() - t0 >= 4);
+});

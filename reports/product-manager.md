@@ -46,3 +46,11 @@
 **Calls I made:** I kept the revision 1 Changes line as history. R1 and the assumptions now note that the 3B ASR turned "lah" into "leh" on a synthetic voice; real voices are still the real test.
 
 **Unsure about:** whether OpenCode Go reads tone well enough from words alone (E2's tone score against reference labels is the evidence). IMPL.md needs the engineering manager's matching update.
+
+## Revision 4 (2026-11-20): upload a Singlish audio file
+
+**What changed in PRD.md:** new Should story US-16 (m4a/mp3/wav, 2-minute cap, minutes-used confirm step, same cards in order, clear error for undecodable files, repeat upload served from cache). Added to the stories table, requirement A10, two error rows (too long, undecodable), a budget note (each uploaded minute uses a minute of the monthly hour), the scope table (Should, right after slice 3) and a Changes line.
+
+**Calls I made:** US-16 keeps the existing numbering (appended after US-15). The "too long" and "undecodable" messages are my wording. A 2-minute file is 8 clips, about 2,800 tokens.
+
+**Unsure about:** nothing new. IMPL.md needs the engineering manager's matching slice.

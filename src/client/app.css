@@ -106,8 +106,39 @@ u.term { text-decoration: underline; text-decoration-color: var(--accent); text-
 .card.unsure .reading { margin-top: 4px; }
 .card.unsure .reading .chip { margin: 0 0 0 6px; }
 .card.unsure .or { margin-top: 4px; color: var(--muted); font-size: 0.9rem; font-style: italic; }
-.top .listen {
+.top .upload {
   margin-left: auto;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+}
+.top button:disabled { opacity: 0.4; }
+.upload-status { margin: 0; padding: 6px 16px; color: var(--muted); font-size: 0.9rem; }
+.upload-confirm {
+  margin: 8px 16px;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--card);
+}
+.upload-confirm p { margin: 0 0 10px; }
+.upload-confirm[hidden], .upload-status[hidden] { display: none; }
+.upload-actions { display: flex; gap: 10px; }
+.upload-actions button {
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+}
+.upload-actions #upload-send { background: var(--accent); border-color: var(--accent); color: #fff; }
+.top .listen {
   font: inherit;
   font-weight: 700;
   padding: 8px 18px;

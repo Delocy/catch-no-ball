@@ -1,0 +1,9 @@
+// Status log for slice-3b-engineer
+[
+  { "time": "2026-11-20T16:00:00+08:00", "step": "read IMPL slice 3b, PRD US-16, slice 3 client code", "status": "done", "note": "No server changes needed" },
+  { "time": "2026-11-20T16:10:00+08:00", "step": "tests first (RED)", "status": "done", "note": "upload, queue, copy, pages tests added; 6 failing" },
+  { "time": "2026-11-20T16:25:00+08:00", "step": "upload.js, queue gap/drop, copy, html, css, app.js glue, index.js (GREEN)", "status": "done", "note": "324 pass, 0 fail" },
+  { "time": "2026-11-20T16:35:00+08:00", "step": "live check", "status": "done", "note": "1 MERaLiON request, then the same file again: cached true, budget unchanged" },
+  { "time": "2026-11-20T16:40:00+08:00", "step": "reports", "status": "done", "note": "" },
+  { "time": "2026-11-20T17:10:00+08:00", "step": "review fixes (I1, I2, minors 1,2,3,5,8)", "status": "done", "note": "RED then GREEN; npm test exit 0, coverage exit 0; 4, 6, 7 deferred with reasons" }
+]
