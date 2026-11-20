@@ -18,5 +18,18 @@ test("COPY values equal the IMPL.md table, character for character", () => {
       "The microphone is blocked. iPhone Safari: tap aA, then Website Settings, then Microphone: Allow. Android Chrome: tap the icon left of the address, then Permissions, then Microphone: Allow. Or type below.",
     newToMe: "New to me",
     learnMore: "Learn more",
+    uploadButton: "Upload audio",
+    uploadCancel: "Cancel upload",
+    uploadSend: "Send",
+    uploadDismiss: "Cancel",
+    uploadReading: "Reading the file",
+    uploadConfirm: "This file uses about {n} min of MERaLiON; {m} min left this month. Send?",
+    uploadConfirmNoBudget: "This file uses about {n} min of MERaLiON. Send?",
+    uploadBudgetOut: "No MERaLiON minutes left this month, so this file would go through Backup mode. Send?",
+    uploadTooLong: "This file is over 2 minutes. Trim it to 2 minutes or less and try again.",
+    uploadUnreadable: "Couldn't read this file. Try an m4a, mp3 or wav recording.",
+    uploadSilent: "No speech found in this file.",
+    uploadSending: "Sending clip {i} of {n}",
+    uploadCancelled: "Upload cancelled.",
   });
 });

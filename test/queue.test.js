@@ -159,3 +159,73 @@ test("a retry re-sends its first context even after later lines arrived (M6 kept
   await q.idle();
   assert.deepEqual(sent, [["A", []], ["B", ["A"]], ["A", []]]);
 });
+
+test("gapMs is awaited between items, never before the first or after the last", async () => {
+  const slept = [];
+  const q = createClipQueue({
+    send: async () => ({}), onResult: () => {},
+    gapMs: () => 13000, sleep: async (ms) => { slept.push(ms); },
+  });
+  q.push({ kind: "clip", uploadId: "u1" });
+  q.push({ kind: "clip", uploadId: "u1" });
+  await q.idle();
+  assert.deepEqual(slept, [13000]);
+  const none = [];
+  const q2 = createClipQueue({ send: async () => ({}), onResult: () => {}, gapMs: () => 0, sleep: async (ms) => none.push(ms) });
+  q2.push({ n: 1 }); q2.push({ n: 2 });
+  await q2.idle();
+  assert.deepEqual(none, []);
+});
+
+test("drop removes waiting items, never the one in flight", async () => {
+  const sent = [];
+  const results = [];
+  let release;
+  const q = createClipQueue({
+    send: (item) => { sent.push(item.id); return new Promise((r) => { release = () => r("ok"); }); },
+    onResult: (item) => results.push(item.id),
+  });
+  const A = { id: "A", uploadId: "u1" }, B = { id: "B", uploadId: "u1" }, C = { id: "C", uploadId: "u1" };
+  q.push(A); q.push(B); q.push(C);
+  await Promise.resolve();
+  assert.deepEqual(q.drop((i) => i.uploadId === "u1"), [B, C]);
+  release();
+  await q.idle();
+  assert.deepEqual(sent, ["A"]);
+  assert.deepEqual(results, ["A"]);
+  assert.equal(q.size(), 0);
+});
+
+test("drop during the gap removes the next item", async () => {
+  const sent = [];
+  let wake;
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: () => 13000,
+    sleep: () => new Promise((r) => { wake = r; }),
+  });
+  q.push({ id: "A", uploadId: "u1" }); q.push({ id: "B", uploadId: "u1" });
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(q.drop((i) => i.id === "B").map((i) => i.id), ["B"]);
+  wake();
+  await q.idle();
+  assert.deepEqual(sent, ["A"]);
+});
+
+test("a typed line pushed during an upload is sent in push order with no gap around it", async () => {
+  const sent = [];
+  const gaps = [];
+  const q = createClipQueue({
+    send: async (item) => { sent.push(item.id); return {}; },
+    onResult: () => {},
+    gapMs: (next, prev) => (next.uploadId && prev.uploadId ? 13000 : 0),
+    sleep: async (ms) => { gaps.push(ms); },
+  });
+  q.push({ id: "c1", uploadId: "u1" });
+  q.push({ id: "t", kind: "text" });
+  q.push({ id: "c2", uploadId: "u1" });
+  await q.idle();
+  assert.deepEqual(sent, ["c1", "t", "c2"]);
+  assert.deepEqual(gaps, []);
+});

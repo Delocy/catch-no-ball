@@ -89,3 +89,12 @@ test("the banner copy in app.html is exactly COPY.translating and COPY.tellTable
   assert.match(read("src/client/app.js"), /COPY\.translating/);
   assert.match(read("src/client/app.js"), /COPY\.tellTable/);
 });
+
+test("app.html has the upload controls", () => {
+  const html = read("src/pages/app.html");
+  assert.match(html, /<button[^>]+id="upload"[^>]*>Upload audio<\/button>/);
+  assert.match(html, /<input[^>]+id="upload-file"[^>]*type="file"[^>]*hidden|<input[^>]+type="file"[^>]*id="upload-file"[^>]*hidden/);
+  assert.ok(html.includes('accept="audio/*,.m4a,.mp3,.wav"'));
+  assert.match(html, /id="upload-confirm"/);
+  assert.match(html, /id="upload-status"[^>]*role="status"|role="status"[^>]*id="upload-status"/);
+});
