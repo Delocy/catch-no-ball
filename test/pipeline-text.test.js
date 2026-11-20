@@ -123,3 +123,16 @@ test("a sessionId that is not header-safe gets a UUID instead", async () => {
   assert.match(calls[1].args.sessionId, /^[0-9a-f-]{36}$/);
   assert.equal(calls[2].args.sessionId, "ok-id_1");
 });
+
+test("a failed retry becomes meaning_unavailable", async () => {
+  const { deps: d } = deps(() => { throw new Error("retry failed"); });
+  const body = await (await handleText(post({ text: "can meh", sessionId: "s", context: ["a"] }), {}, d)).json();
+  assert.equal(body.status, "meaning_unavailable");
+  assert.deepEqual(body.sentences, []);
+});
+
+test("passes is passed through", async () => {
+  const { deps: d } = deps(() => ({ sentences: [sentence()], passes: 2 }));
+  const body = await (await handleText(post({ text: "can meh", sessionId: "s" }), {}, d)).json();
+  assert.equal(body.passes, 2);
+});

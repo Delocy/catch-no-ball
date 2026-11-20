@@ -203,3 +203,65 @@ test("a missing OPENCODE_API_KEY throws InterpretError before any request", asyn
   await assert.rejects(interpret({ transcript: "t", context: [], sessionId: "s" }, {}, f), /OPENCODE_API_KEY is not set/);
   assert.equal(f.seen.length, 0);
 });
+
+// ---- slice 2: two readings ----
+const R2 = [{ meaning: "Is it really okay?", tone: "doubtful" }, { meaning: "Fine, it is okay.", tone: "neutral" }];
+const unsure = (over = {}) => ok({ said: "can meh", confident: false, tone: "doubtful", readings: R2, ...over });
+const KEY = { OPENCODE_API_KEY: "k" };
+
+test("retries once with the last 3 context sentences when a Singlish sentence is unsure", async () => {
+  const f = fakeFetch(() => chatResponse(unsure()));
+  const r = await interpret({ transcript: "can meh", context: ["s1", "s2", "s3", "s4"], sessionId: "s" }, KEY, f);
+  assert.equal(f.seen.length, 2);
+  const u1 = f.seen[0].body.messages[1].content;
+  const u2 = f.seen[1].body.messages[1].content;
+  assert.match(u1, /s4/);
+  assert.doesNotMatch(u1, /s3/);
+  assert.match(u2, /s2[\s\S]*s3[\s\S]*s4/);
+  assert.doesNotMatch(u2, /s1/);
+  assert.match(f.seen[1].body.messages[0].content, /Reconsider with the extra context/);
+  assert.equal(r.sentences[0].readings.length, 2);
+  assert.equal(r.passes, 2);
+});
+
+test("a settled retry returns the confident sentence with passes 2", async () => {
+  let n = 0;
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : ok({ said: "can meh", tone: "reluctant" })));
+  const r = await interpret({ transcript: "can meh", context: ["Can you finish the slides?"], sessionId: "s" }, KEY, f);
+  assert.equal(r.passes, 2);
+  assert.equal(r.sentences[0].confident, true);
+  assert.equal(r.sentences[0].tone, "reluctant");
+});
+
+test("does not retry when an unsure sentence is plain English", async () => {
+  const f = fakeFetch(() => chatResponse(ok({ said: "Let us move on", hasSinglish: false, confident: false })));
+  const r = await interpret({ transcript: "Let us move on", context: [], sessionId: "s" }, KEY, f);
+  assert.equal(f.seen.length, 1);
+  assert.equal(r.passes, 1);
+});
+
+test("does not retry a confident Singlish sentence", async () => {
+  const f = fakeFetch(() => chatResponse(ok()));
+  await interpret({ transcript: "Eh the deadline confirm cannot shift one lah", context: [], sessionId: "s" }, KEY, f);
+  assert.equal(f.seen.length, 1);
+});
+
+test("throws InterpretError when the retry still lacks exactly two readings", async () => {
+  let n = 0;
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : unsure({ readings: [R2[0]] })));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+  assert.equal(f.seen.length, 2);
+});
+
+test("throws when the retry call returns 500", async () => {
+  let n = 0;
+  const f = fakeFetch(() => (n++ === 0 ? chatResponse(unsure()) : new Response("x", { status: 500 })));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+});
+
+test("rejects a reading whose tone is outside TONES", async () => {
+  let n = 0;
+  const bad = unsure({ readings: [{ meaning: "a", tone: "angry" }, R2[1]] });
+  const f = fakeFetch(() => chatResponse(n++ === 0 ? unsure() : bad));
+  await assert.rejects(interpret({ transcript: "can meh", context: [], sessionId: "s" }, KEY, f), InterpretError);
+});
