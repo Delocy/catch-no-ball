@@ -8,8 +8,9 @@ import { sentence } from "./helpers/replies.js";
 function chunk({ wav = makeWav(2), sessionId = "s1", context = "[]", audio = true, type = "audio/wav" } = {}) {
   const fd = new FormData();
   if (audio) fd.append("audio", new Blob([wav], { type }), "clip.wav");
-  if (sessionId !== undefined) fd.append("sessionId", sessionId);
-  if (context !== undefined) fd.append("context", context);
+  // null leaves the field out
+  if (sessionId !== null) fd.append("sessionId", sessionId);
+  if (context !== null) fd.append("context", context);
   return new Request("http://x/api/chunk", { method: "POST", body: fd });
 }
 
@@ -143,7 +144,7 @@ test("interpret throwing -> meaning_unavailable with the transcript", async (t) 
 });
 
 test("malformed context JSON -> interpret gets []", async () => {
-  for (const context of ["{not json", '"str"', "null", undefined]) {
+  for (const context of ["{not json", '"str"', "null", null]) {
     const { deps: d, calls } = deps();
     await handleChunk(chunk({ context }), {}, d);
     assert.deepEqual(calls.interpret[0].args.context, [], String(context));
@@ -151,7 +152,7 @@ test("malformed context JSON -> interpret gets []", async () => {
 });
 
 test("a bad or missing sessionId gets a fresh UUID", async () => {
-  for (const sessionId of [undefined, "has spaces", "x".repeat(101)]) {
+  for (const sessionId of [null, "has spaces", "x".repeat(101)]) {
     const { deps: d, calls } = deps();
     await handleChunk(chunk({ sessionId }), {}, d);
     assert.match(calls.interpret[0].args.sessionId, /^[0-9a-f-]{36}$/);
