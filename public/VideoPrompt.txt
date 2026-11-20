@@ -1,0 +1,36 @@
+Create a polished demo video (MP4, 1080p, 30fps, ~60-90 seconds) of this web app.
+STEP 1: Understand the app
+- Read the codebase and README, then run the app locally.
+- Identify the 4-6 most compelling features and a natural user journey through them.
+STEP 2: Write the script - reference to [Script Pitch] below
+- Write a narration script, split into short scenes (one per feature or screen).
+- Tone: fun, warm, upbeat and conversational, like a friendly guide. Light humour is welcome, no jargon, no cringe.
+- Structure: a hook (the problem), a quick walkthrough of the key features, then a short call to action.
+- Save the script as script.md with a scene-by-scene table: scene, on-screen action, narration text.
+- Show me the script and wait for my approval before continuing.
+STEP 3: Record the screen
+- Use Playwright to script the walkthrough at 1920x1080 with video recording.
+- Use realistic demo data, smooth mouse movement, small pauses, and a visible cursor.
+- Time each scene to fit its narration, and add short pauses between scenes.
+- No errors, loading flashes, or dev tools visible.
+STEP 4: Generate the voiceover
+- Use a pleasant, natural-sounding female voice (e.g. edge-tts with en-US-AriaNeural or en-US-JennyNeural, or another high-quality free TTS available).
+- Slightly upbeat pace, clear pronunciation, one audio file per scene.
+- Measure each clip's duration and sync the video to match it.
+STEP 5: Subtitles
+- Generate an .srt file from the script, timed to the actual audio durations.
+- Max 2 lines and ~42 characters per line, and break at natural phrases.
+- Burn them into the video with ffmpeg: white text, subtle dark outline or semi-transparent box, bottom-centre, a clean sans-serif font.
+- Also export the .srt separately.
+STEP 6: Background music
+- Use soft, upbeat, instrumental, royalty-free music (use a file I provide in /assets if present; otherwise synthesize a gentle ambient loop with ffmpeg or pick a clearly royalty-free source).
+- The music must NEVER mask the narration: set it around -24 to -28 dB under the voice, and use ffmpeg sidechaincompress so it ducks automatically whenever the narrator speaks.
+- Fade in at the start and fade out over the last 2-3 seconds.
+- Normalise final loudness to about -16 LUFS.
+STEP 7: Assemble and verify
+- Mix video, narration, and music with ffmpeg and export demo.mp4 (H.264 + AAC).
+- Check that the audio is synced, the subtitles are readable, the narration is clearly louder than the music, and there are no cut-offs or dead air.
+- Put everything (script, audio, srt, final video, and the build script) in /demo-video, with a single command to regenerate it.
+Install any missing tools (Playwright, ffmpeg, TTS library) and tell me before using anything that requires an API key.
+[Script Pitch]
+------  Enter Script here -----
