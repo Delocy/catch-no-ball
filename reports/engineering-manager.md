@@ -97,3 +97,15 @@ What changed in IMPL.md:
 Decisions for the user: none blocking. Two small points to confirm:
 - Slice 5 may deploy before C's landing page has merged, so the public `/` returns 404 until it lands.
 - The favicon is `logo-mark.svg`, not the full logo.
+
+## Revision 4: no access code, no demo key
+
+Applied the 2026-11-20 user update in `decisions.md` to `IMPL.md` (PRD.md untouched; it keeps US-2 and US-12 as Removed).
+
+- **Secrets:** only `OPENCODE_API_KEY` and `MERALION_API_KEY`. Removed `ACCESS_CODE`, `DEMO_KEY`, `src/auth.js`, the `x-access-code` / `x-demo-key` headers, `POST /api/check`, the 401 path with its tests and copy (`codeWrong`), the client code prompt and `src/client/storage.js` (nothing left to store), and `readDemoKey`/`isDemo`.
+- **Guard:** keeps 5 requests/min plus monthly limits at the full free tier (3600 s audio, 1000 requests, 100,000 tokens); no `demo` parameter anywhere; past a limit clips fall back to Whisper with "Backup mode". `/api/budget` is kept (a public usage counter, and now also the slice 7 offline probe, replacing `api.check`).
+- **Slices:** the old slice 6 (demo key) had nothing left, so it was dropped and the later slices renumbered: 6 Evals, 7 Connection drops, 8 Term sheet and home screen (Should). Overview, dependencies, report names, risks and the "merge slices 5 and 6" note updated to match.
+- **Team split:** B's real eval run needs only the deployed URL. Config table, day-0 D1 (two keys in `.dev.vars` at the project root), contracts, constants, copy, release check, assumptions and the user question updated.
+- **New risk IR-13:** anyone with the public link can use the quota; mitigation is keeping the link private, and the rate guard still applies (it covers MERaLiON only; `/api/text` and OpenCode Go have no limit of their own).
+- Remaining mentions of the removed items are only the revision note, the config-table sentence and IR-13, which explain the removal.
+- **Branches:** Person A's slices are built on `a/slice-<n>-<name>` branches and merged into `main` by PR after the user's feedback (not pushed straight to `main`). Team split rules, section 2, IR-12 and the assumptions are updated; docs-only changes may still go to `main` directly.

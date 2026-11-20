@@ -30,3 +30,11 @@
 4. **E2 gets one cheap new score:** MERaLiON's tone vs the final card's tone, from the same run. This shows whether the split helps.
 
 **Unsure about:** whether MERaLiON counts audio per call or per clip, its token cost for audio, and whether audio chat exists at all (R9, R10). All are checked at the first speech slice.
+
+## Revision 2 (2026-11-20): no access code, no demo key
+
+**What changed in PRD.md:** a Changes line; US-2 and US-12 now read "Removed (2026-11-20)" in the table and body (numbers kept so IMPL.md references hold); A8 and B3b removed; B3a rewritten without the 75/25 split or reserved demo minutes; the access-code error row, the demo-key risk mitigation, the day 1 task and the demo minutes in the budget notes cleaned up; new risk R12.
+
+**Calls I made:** the budget guard is unchanged (5 MERaLiON requests a minute, monthly limits, Whisper with "Backup mode" at the limit), but the whole allowance is usable. R12 is marked "Accepted": anyone with the public link can use the quota; mitigation is to keep the link private, and the rate guard still applies.
+
+**Unsure about:** nothing new. IMPL.md still mentions the access code and demo key and needs the engineering manager's update.
