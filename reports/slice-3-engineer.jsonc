@@ -10,5 +10,6 @@
   { "time": "2026-11-20T15:38:00+08:00", "step": "live smoke", "status": "done", "note": "4 clip requests to /api/chunk, 3 MERaLiON requests, 1 cache hit; 6.21 s audio, 1029 tokens; reject paths free" },
   { "time": "2026-11-20T15:40:00+08:00", "step": "browser check", "status": "done", "note": "/app loads with Listen; mic blocked in the pane shows COPY.micBlocked and focuses the text box" },
   { "time": "2026-11-20T15:42:00+08:00", "step": "coverage", "status": "done", "note": "275 tests, 271 pass, 0 fail, 4 todo; all files 97.07 / 98.19 / 95.58; exit 0" },
-  { "time": "2026-11-20T15:45:00+08:00", "step": "reports", "status": "done", "note": "slice-3-engineer.md written" }
+  { "time": "2026-11-20T15:45:00+08:00", "step": "reports", "status": "done", "note": "slice-3-engineer.md written" },
+  { "time": "2026-11-20T16:40:00+08:00", "step": "review fixes (I1-I3, concerns 2-3, m1-m3)", "status": "done", "note": "RED 27f876a (14 failing), GREEN be58b36 + 0dd4376; npm test exit 0 (304 tests, 300 pass, 0 fail); coverage exit 0 (97.31/98.18/96.00); latency: misses 7.5-25.6 s (reasoning 65-80% of completion), interp cache hits 0.004-0.005 s; no max_tokens cap; 0 MERaLiON requests spent; budget shows 2 extra requests not sent by me; m4-m9 deferred with reasons" }
 ]

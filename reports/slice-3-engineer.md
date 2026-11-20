@@ -120,3 +120,49 @@ In dev tools → Network, each `/api/chunk` reply shows `source: "meralion"`, `t
 5. **The worklet is kept running through a zero-gain node to the speakers**, so Chrome and Safari keep pulling frames. Not exercised with a real microphone (the preview pane blocks it); the mic path needs the user's hand check.
 6. **`evals/fetch-clips.js` (Person B) is at 34.88% lines**, under the reviewer's 60% per-file flag. It is B's file, so I did not touch it; the totals still pass.
 7. The guard counts the clip's real seconds; step 0's flat 330-token prompt suggests MERaLiON may count each call as 30 s. Compare `/api/budget` with MERaLiON's console at release, as section 1 says.
+
+## Review fixes (reports/slice-3-reviewer.md)
+
+All test-first: RED commit `27f876a` (230 tests, **14 failing**: the 4 forged-header `wavInfo` tests, the 2 guard concurrency tests, the clip-4xx card, the banner-copy test, the hear cleaning test, and the meralion, pipeline-chunk, pipeline-text, queue and session files that import the missing `cleanTranscript`, `MAX_CHUNK_BYTES`, `interpKey`/`INTERP_TTL_SECONDS`, `sendContext`/`enteredContext`), then GREEN `be58b36` (server) and `0dd4376` (client). `retryOf` had its own RED (`does not provide an export named 'retryOf'`) then GREEN.
+
+| Finding | Fix |
+|---|---|
+| **I1** guard race | `MeralionGuard.fetch` parses the body before touching storage, and does get → decide → put inside `ctx.blockConcurrencyWhile` (same for `/tokens`). New tests with a locking fake: 8 concurrent reserves → exactly 5 allowed, stored `requests: 5`, `seconds: 75`; 6 concurrent `/tokens` all counted. |
+| **I2** trusted header | `wavInfo` now requires `blockAlign === channels*bits/8` and `byteRate === sampleRate*blockAlign`, and the data chunk must run exactly to the end of the body (one pad byte allowed for an odd size): no trailing bytes, no short data. `/api/chunk` returns 413 `too_long` when `Content-Length` > `MAX_CHUNK_BYTES = 1,100,000` (before the body is read) or the audio file is bigger (real size). All before any MERaLiON call. Tests use forged headers (byteRate ×20, wrong blockAlign, 1 s header + 60 s of samples, 2 extra bytes, short data) and oversize bodies. Live: trailing bytes → 400 in 16 ms, 1.2 MB → 413 in 11 ms. The `afconvert` fixtures (with their FLLR chunk) still pass. |
+| **I3** context | A first try now reads the context when it is **sent** (`sendContext` in `session.js`, stored on the item); only retries reuse it. Because the queue sends one at a time after the previous `onResult`, a clip created while the previous one is in flight sees that line. Tests wire the real queue + `contextAfter` + `sendContext`: A and B pushed together → B is sent with `["A"]`; a retry after later lines re-sends `[]`. `withContext` stays exported but `app.js` no longer uses it. IMPL's M6 sentence is the coordinator's to fix. |
+| m1 | `retryOf(item, result, error)`: a retry always re-sends its first context (`retry: true`) and carries `inContext`, true only if its first try was `meaning_unavailable` with words (`enteredContext`). `contextAfter` skips the append only when `inContext`, so a line whose first try hit a network error enters the context when the retry succeeds. |
+| m2 | `renderResult`: a clip whose request got a 4xx (`bad_audio`, `too_long`) shows "Couldn't catch that" + text box, not a retry that can never work. Network/5xx errors stay retryable. |
+| m3 | `app.js` sets the banner text from `COPY.translating` / `COPY.tellTable`; a page test pins the HTML fallback to the same strings. |
+| Concern 2 | `cleanTranscript` in `meralion.js`: a single bracketed word loses its brackets (`Can (loh) I do it tomorrow?` → `Can loh I do it tomorrow?`); real parentheses ("(the new guy)") are kept. Applied in `callMeralionTranscribe` (so the cache stores clean text) and on a cache hit (cleans entries stored before this fix). Live: the cached "can lor" clip now returns `Can loh I do it tomorrow?` with no MERaLiON call. |
+| Concern 3 | See below. |
+
+Deferred minors: **m4** (two identical clips in flight both miss the cache): the phone sends one at a time; only parallel eval runs could hit it, and B's runner is serial with a 13 s gap. **m5** (44.1 kHz aliasing): fine for ASR, desktop Chrome and iPhone run at 48 kHz (block average path). **m6** (`noiseSuppression`): needs a real meeting A/B, not a code change on guesswork. **m7** (IMPL "transcript and reading" wording): IMPL is the coordinator's; the code now caches the interpretation too, so a cached repeat is instant. **m8** (`evals/fetch-clips.js` 34.88%): Person B's file. **m9** (a few ms dropped at Stop): harmless.
+
+### Concern 3: latency, measured
+
+OpenCode usage is now logged by `interpret.js` (token counts only, no content or headers). Before the fix, 3 `/api/text` calls (no MERaLiON):
+
+| Line | Time | Passes | completion / reasoning tokens |
+|---|---|---|---|
+| Eh the deadline confirm cannot shift one lah | 7.5 s | 1 | 384 / 257 |
+| Can lor, I do it tomorrow | 25.6 s | 2 | 652 / 503 and 462 / 316 |
+| Wah this one confirm plus chop cannot change already | 9.0 s | 1 | 738 / 581 |
+
+Reasoning is 65–80% of the completion tokens; the prompt (about 435 tokens, 384 cached) is not the cost. **`max_tokens` was not capped**: with 250–580 reasoning tokens before the JSON, a cap near 400 would cut the answer off (the empty-content failure seen earlier). The time is the model thinking.
+
+Fix: interpretations are cached in KV under `interp:<sha256(JSON [transcript, context])>` for 7 days (only `ok` results; KV failures never fail a request); a hit returns `passes: 0` (no OpenCode call). Used by both `/api/text` and `/api/chunk`. After:
+
+| Line (context `["We need the slides by Friday."]`) | First time (miss) | Repeat (hit) |
+|---|---|---|
+| Eh the deadline confirm cannot shift one lah | 9.1 s, passes 1 | 0.005 s, passes 0 |
+| Can lor, I do it tomorrow | 24.5 s, passes 2 | 0.005 s, passes 0 |
+| Wah this one confirm plus chop cannot change already | 9.3 s, passes 1 | 0.004 s, passes 0 |
+
+So the cache helps repeats (eval re-runs, retries, demo rehearsals), not new speech. New lines still take 7–25 s, and one live re-run of the Singlish clip timed out at OpenCode's 20 s limit (`meaning_unavailable`). A real fix for new lines needs a non-reasoning model or a reasoning switch, which is a plan decision for the coordinator.
+
+### Commands and spend
+
+- `npm test`: exit 0, 304 tests, 300 pass, 0 fail, 4 todo.
+- `npm run coverage`: exit 0, all files 97.31% lines / 98.18% branches / 96.00% functions.
+- MERaLiON spend for the review fixes: **0 requests** (the two clips re-sent live were cache hits). `/api/budget` now shows 5 requests, 14.80 s, 1,713 tokens: 3 from my first smoke check and 2 more `/api/chunk` calls (3.6 s and 10.3 s in the wrangler log) that I did not send, most likely the user trying Listen.
+- Dev server: not restarted (no `wrangler.toml` change); `src/` changes hot-reloaded.
