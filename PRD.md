@@ -6,6 +6,7 @@
 **Tagline:** *For when you catch no ball.*
 
 **Changes**
+- **2026-11-20, revision 4: upload a Singlish audio file (user decision).** New Should story US-16: the user picks an m4a, mp3 or wav recording (a meeting voice memo or an eval clip) and gets the same cards as live listening. Files are capped at 2 minutes, and the app shows the MERaLiON minutes the file will use against what is left this month before sending. Built right after slice 3 is reviewed and accepted. Updated: sections 5 (US-16), 6 (A10, errors), 7 (budget note), 8 (scope).
 - **2026-11-20, revision 3: transcript-only MERaLiON (user decision, after the step-0 check).** The hosted MERaLiON API serves only MERaLiON-3-3B-ASR-CTM, and its audio chat returns errors, so option B is replaced by transcript-only (formerly option A): MERaLiON transcribes each clip, and OpenCode Go produces the meaning, tone and terms. There is no MERaLiON reading or hint, and no 10B model. Budget redone with the measured cost: one call per clip, 15 s clips, about 345 tokens per clip. R9 and R10 are resolved; R3 is partly resolved; R11 and the E2 MERaLiON-vs-final-card tone score are dropped; a new note records that the 3B ASR turned "lah" into "leh" on a synthetic voice (R1 with real voices is still the real test). Deploying is deferred: everything runs locally for now, and the deploy requirements are kept for later. Updated: sections 1, 3 (E2), 4, 5 (US-10), 6 (A3, L1, B2–B6, errors), 7, 8, 9.
 - **2026-11-20, revision 2: no access code and no demo key (user decision).** US-2 and US-12 are removed (numbers kept so IMPL.md references hold), ACCESS_CODE and DEMO_KEY are gone, the 75/25 demo split and reserved minutes are dropped so the whole free-tier allowance is usable, and a new risk R12 covers the public link. The rate guard and monthly limits stay; at the limit the app falls back to Whisper with "Backup mode".
 - **2026-11-20, revision 1: how the work is split between the models (the user chose "option B").** MERaLiON (MERaLiON-3 10B wanted) now hears each clip and returns the exact transcript **plus its own reading of meaning and tone**. OpenCode Go checks that reading, adds conversation context and writes the final card; it also handles typed text alone. Whisper is only the fallback, and then OpenCode Go works from the transcript alone. Whether the hosted API serves MERaLiON-3 10B and accepts audio in chat is unconfirmed; if not, we fall back to transcript-only MERaLiON (the old approach). Budget redone: one combined MERaLiON call per clip keeps ~15 s clips; two calls per clip would need ~25 s clips. Updated: sections 1, 3 (E2), 4, 5 (US-10, US-11), 6 (A3, L1, B2–B6, errors), 7, 8, 9.
@@ -148,6 +149,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | US-13 | Team runs the eval set and gets a score table | Must |
 | US-14 | Tap a Singlish term to see what it means | Should |
 | US-15 | Add the app to the home screen | Should |
+| US-16 | Upload a Singlish audio file | Should |
 
 **US-1. Open the app from the landing page.** As a newcomer, I land on the site and get to the app in one tap.
 *Done when:* `/` shows the name, logo, tagline, a one-paragraph explanation, an example card and the privacy line (L1); "Open the app" goes to the app; the page reads well on a phone in portrait.
@@ -192,6 +194,15 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 **US-15 (Should). Add to home screen.** As a newcomer, I open Catch No Ball from a phone shortcut, as in the brief's walkthrough.
 *Done when:* the site has a web app manifest and icon, and "Add to Home Screen" opens the app.
 
+**US-16 (Should): Upload a Singlish audio file.** As a newcomer, I pick a recording (a voice memo of a meeting, or an eval clip) and get the same cards as live listening.
+*Done when:*
+- m4a, mp3 and wav files are accepted.
+- Files over 2 minutes are refused, with a clear message.
+- Before sending, the app shows how many MERaLiON minutes the file will use against what's left this month, and the user confirms.
+- Cards appear in order, exactly as with Listen.
+- Undecodable files show a clear error.
+- The same file uploaded again costs no MERaLiON quota (it hits the cache).
+
 ---
 
 ## 6. Functional requirements
@@ -208,6 +219,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | A6 | Two readings when unsure. | US-6 |
 | A7 | Always-available text box that produces cards the same way as speech. | US-7, US-8 |
 | A8 | Removed (2026-11-20): no access code. | US-2 |
+| A10 | (Should) Upload a file (m4a, mp3, wav; at most 2 minutes). The page decodes it in the browser, converts it to 16 kHz mono, splits it into 15 s clips and sends each through the same chunk path as Listen (same rate guard and cache), in order. Before sending it shows the MERaLiON minutes the file will use against the minutes left this month (from the budget counter) and waits for the user to confirm. | US-16 |
 | A9 | (Should) Term sheet with gloss and singlishdict.app link. Link out only; no scraping or AI use of that site (its terms forbid it). | US-14 |
 
 ### Landing page
@@ -244,6 +256,8 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | OpenCode Go erroring or malformed reply | Transcript + "Meaning unavailable, tap to retry" | US-11 |
 | Model unsure after one retry | "Could mean: … or …" | US-6 |
 | Mic permission denied | How to allow the mic, plus the text box | US-8 |
+| Uploaded file is over 2 minutes | "This file is longer than 2 minutes. Pick a shorter one." Nothing is sent. | US-16 |
+| Uploaded file can't be decoded (wrong or damaged format) | "Couldn't read this audio file. Try an m4a, mp3 or wav." Nothing is sent. | US-16 |
 | Browser can't record audio | "This browser can't listen. Type instead." + text box | US-8 |
 
 ---
@@ -282,6 +296,7 @@ Numbered so they can be sliced. **Must** = in the 1-week build. **Should** = onl
 | Clips per month before the token cap (100k) | ~290 |
 | Clips per month before the request cap (1,000) | 1,000 |
 
+- **Uploads draw from the same hour.** Each uploaded minute uses a minute of the monthly MERaLiON hour (4 clips of 15 s). A 2-minute file is 8 clips, about 2,800 tokens. Uploading the same file again hits the cache and costs no quota. The confirm step (US-16) shows the cost before anything is sent.
 - **Audio is the limit, not tokens.** 240 clips use about 83k tokens, under the 100k cap. The budget counter (B3a) still tracks all three.
 - **Course events still fit:** an E2 run is ~2 min of audio, 15 calls and ~5,200 tokens, so ~10 runs use ~20 min, leaving ~40 min for rehearsals and the demo **(estimates)**.
 
@@ -313,7 +328,7 @@ Typed text ──► Worker ──► OpenCode Go alone ──► card
 | In this build (Must) | Only if time (Should) | Cut from the earlier PRD, and why |
 |---|---|---|
 | US-1 to US-13 | US-14 tap a term | **Star a term and the "You caught N terms" summary at Stop.** Not in the brief's first version; it's a learning feature, not the core listen → card flow. |
-| Landing page with name and logo | US-15 home-screen shortcut | **Setting picker.** Office meeting is the only setting, so a picker screen adds nothing. |
+| Landing page with name and logo | US-15 home-screen shortcut; US-16 upload an audio file (right after slice 3) | **Setting picker.** Office meeting is the only setting, so a picker screen adds nothing. |
 | E1 (10 sentences) and E2 (15 clips) | | **Offline clip queue.** Hard to get right in a week; the banner, kept cards and auto-resume cover the user's main worry. |
 | Deploy on `workers.dev` (deferred, run locally for now), video, presentation | | **25-clip eval set and comparing two prompts.** Evals stay small: 15 clips, one prompt. Tune the prompt only if E2 shows a problem. |
 | | | **Remotion video.** QuickTime click-through meets the requirement. |
